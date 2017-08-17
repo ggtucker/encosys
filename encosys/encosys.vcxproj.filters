@@ -17,10 +17,16 @@
     <ClInclude Include="EncosysDefines.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="Entity.h">
+    <ClInclude Include="EntitySystem.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="EntitySystem.h">
+    <ClInclude Include="EntityId.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BlockObjectPool.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BlockMemoryPool.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -29,6 +35,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="EntitySystem.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BlockMemoryPool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

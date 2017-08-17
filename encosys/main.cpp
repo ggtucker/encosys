@@ -7,8 +7,10 @@ struct CPosition {
     float y;
 };
 
-void OutputPosition (const CPosition& position) {
-    std::cout << "x: " << position.x << " y: " << position.y << std::endl;
+void OutputPosition (const CPosition* position) {
+    if (position) {
+        std::cout << "x: " << position->x << " y: " << position->y << std::endl;
+    }
 }
 
 int main () {
@@ -19,14 +21,20 @@ int main () {
 
     ecs::EntitySystem entitySystem(componentRegistry);
 
-    ecs::Entity e = entitySystem.Create();
-    CPosition& position = entitySystem.Add<CPosition>(e);
-    position.x = 5;
-    position.y = 10;
+    ecs::EntityId e = entitySystem.Create();
 
-    CPosition& samePosition = entitySystem.Get<CPosition>(e);
-    OutputPosition(position);
+    CPosition pos;
+    pos.x = 5;
+    pos.y = 10;
+
+    entitySystem.Add<CPosition>(e) = pos;
+
+    CPosition* samePosition = entitySystem.Get<CPosition>(e);
+    samePosition->y = 7;
+
+    OutputPosition(&pos);
     OutputPosition(samePosition);
+    OutputPosition(entitySystem.Get<CPosition>(e));
 
     return 0;
 }

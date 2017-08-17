@@ -119,12 +119,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="BlockMemoryPool.h" />
     <ClInclude Include="ComponentTypeRegistry.h" />
     <ClInclude Include="EncosysDefines.h" />
-    <ClInclude Include="Entity.h" />
+    <ClInclude Include="EntityId.h" />
     <ClInclude Include="EntitySystem.h" />
+    <ClInclude Include="BlockObjectPool.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="BlockMemoryPool.cpp" />
     <ClCompile Include="EntitySystem.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>

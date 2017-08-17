@@ -6,49 +6,91 @@
 
 namespace ecs {
 
-EntitySystem::EntitySystem (const ComponentTypeRegistry& componentRegistry) :
+EntitySystem::EntitySystem (ComponentTypeRegistry& componentRegistry) :
     m_componentRegistry{componentRegistry} {
 }
 
-Entity EntitySystem::Create () {
-    Entity entity(m_entityIdCounter);
-    const uint32_t index = static_cast<uint32_t>(m_componentIndexCards.size());
-    m_entityToIndexCard[entity] = index;
-    m_componentIndexCards.resize(index + 1);
-    std::fill(m_componentIndexCards[index].begin(), m_componentIndexCards[index].end(), c_invalidIndex);
+EntityId EntitySystem::Create () {
+    EntityId id(m_entityIdCounter);
+    const uint32_t index = EntityCount();
+    m_idToEntity[id] = index;
+    m_entities.push_back(Entity(id));
     ++m_entityIdCounter;
-    return entity;
+    return id;
 }
 
-uint8_t* EntitySystem::Add (Entity e, ComponentTypeIndex typeIndex) {
+void EntitySystem::Destroy (EntityId e) {
     // Verify this entity exists
-    auto indexCard = m_entityToIndexCard.find(e);
-    assert(indexCard != m_entityToIndexCard.end());
+    auto entityIter = m_idToEntity.find(e);
+    assert(entityIter != m_idToEntity.end());
 
-    // Retrieve the registered type of the component
-    const ComponentType& type = m_componentRegistry.GetType(typeIndex);
+    // Cache off the information about this entity
+    uint32_t entityIndex = entityIter->second;
+    Entity& entity = m_entities[entityIndex];
 
-    // Increase the storage capacity for this component type and return
-    // a pointer to the component's memory for external initialization.
-    ComponentByteVector& storage = m_componentByteVectors[typeIndex];
-    std::size_t byteIndex = storage.size();
-    m_componentIndexCards[indexCard->second][typeIndex] = static_cast<ComponentIndex>(byteIndex);
-    storage.resize(byteIndex + type.m_bytes);
-    return &storage[byteIndex];
+    // Destroy the components for this entity
+    for (uint32_t i = 0; i < m_componentRegistry.Count(); ++i) {
+        const ComponentTypeId typeId = m_componentRegistry[i].m_id;
+        if (entity.HasComponent(typeId)) {
+            auto& storage = m_componentRegistry.GetStorage(typeId);
+            storage.Destroy(entity.GetComponentIndex(typeId));
+            entity.RemoveComponentIndex(typeId);
+        }
+    }
+
+    // Move the entity to the end of the vector and erase it
+    IndexSetActive(entityIndex, false);
+    IndexSwapEntities(entityIndex, EntityCount() - 1);
+    m_idToEntity.erase(entityIter);
+    m_entities.pop_back();
 }
 
-uint8_t* EntitySystem::Get (Entity e, ComponentTypeIndex typeIndex) {
+bool EntitySystem::IsValid (EntityId e) const {
+    return m_idToEntity.find(e) != m_idToEntity.end();
+}
+
+bool EntitySystem::IsActive (EntityId e) const {
     // Verify this entity exists
-    auto indexCard = m_entityToIndexCard.find(e);
-    assert(indexCard != m_entityToIndexCard.end());
+    auto entityIter = m_idToEntity.find(e);
+    assert(entityIter != m_idToEntity.end());
 
-    // Retrieve the registered type of the component
-    const ComponentType& type = m_componentRegistry.GetType(typeIndex);
+    return IndexIsActive(entityIter->second);
+}
 
-    // Return a pointer to the component's memory.
-    ComponentByteVector& storage = m_componentByteVectors[typeIndex];
-    ComponentIndex byteIndex = m_componentIndexCards[indexCard->second][typeIndex];
-    return &storage[byteIndex];
+void EntitySystem::SetActive (EntityId e, bool active) {
+    // Verify this entity exists
+    auto entityIter = m_idToEntity.find(e);
+    assert(entityIter != m_idToEntity.end());
+
+    uint32_t entityIndex = entityIter->second;
+    IndexSetActive(entityIndex, active);
+}
+
+uint32_t EntitySystem::EntityCount () const {
+    return static_cast<uint32_t>(m_entities.size());
+}
+
+void EntitySystem::IndexSwapEntities (uint32_t lhsIndex, uint32_t rhsIndex) {
+    if (lhsIndex == rhsIndex) {
+        return;
+    }
+    m_idToEntity[m_entities[lhsIndex].GetId()] = rhsIndex;
+    m_idToEntity[m_entities[rhsIndex].GetId()] = lhsIndex;
+    std::swap(m_entities[lhsIndex], m_entities[rhsIndex]);
+}
+
+bool EntitySystem::IndexIsActive (uint32_t index) const {
+    return index < m_entityActiveCount;
+}
+
+void EntitySystem::IndexSetActive (uint32_t& index, bool active) {
+    if (active == IndexIsActive(index)) {
+        return;
+    }
+    const uint32_t newIndex = active ? m_entityActiveCount : m_entityActiveCount - 1;
+    IndexSwapEntities(index, newIndex);
+    m_entityActiveCount += (active ? 1 : -1);
+    index = newIndex;
 }
 
 } // namespace ecs
