@@ -10,12 +10,29 @@ EntitySystem::EntitySystem (ComponentTypeRegistry& componentRegistry) :
     m_componentRegistry{componentRegistry} {
 }
 
-EntityId EntitySystem::Create () {
+EntityId EntitySystem::Create (bool active) {
     EntityId id(m_entityIdCounter);
-    const uint32_t index = EntityCount();
-    m_idToEntity[id] = index;
-    m_entities.push_back(Entity(id));
     ++m_entityIdCounter;
+
+    if (active) {
+        if (m_entityActiveCount == EntityCount()) {
+            m_idToEntity[id] = EntityCount();
+            m_entities.push_back(Entity(id));
+        }
+        else {
+            const Entity& firstInactiveEntity = m_entities[m_entityActiveCount];
+            m_idToEntity[firstInactiveEntity.GetId()] = EntityCount();
+            m_entities.push_back(firstInactiveEntity);
+            m_idToEntity[id] = m_entityActiveCount;
+            m_entities[m_entityActiveCount] = Entity(id);
+        }
+        ++m_entityActiveCount;
+    }
+    else {
+        m_idToEntity[id] = EntityCount();
+        m_entities.push_back(Entity(id));
+    }
+
     return id;
 }
 

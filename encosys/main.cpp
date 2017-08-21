@@ -31,10 +31,10 @@ int main () {
 
     CPosition* samePosition = entitySystem.Get<CPosition>(e);
     samePosition->y = 7;
-
-    OutputPosition(&pos);
-    OutputPosition(samePosition);
-    OutputPosition(entitySystem.Get<CPosition>(e));
+    
+    entitySystem.ForEach([](ecs::Entity entity, CPosition& pos) {
+        OutputPosition(&pos);
+    });
 
     return 0;
 }

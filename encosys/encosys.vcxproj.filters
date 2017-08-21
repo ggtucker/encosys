@@ -29,6 +29,12 @@
     <ClInclude Include="BlockMemoryPool.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="FunctionTraits.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeList.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

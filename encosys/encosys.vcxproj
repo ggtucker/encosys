@@ -125,6 +125,8 @@
     <ClInclude Include="EntityId.h" />
     <ClInclude Include="EntitySystem.h" />
     <ClInclude Include="BlockObjectPool.h" />
+    <ClInclude Include="FunctionTraits.h" />
+    <ClInclude Include="TypeList.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BlockMemoryPool.cpp" />

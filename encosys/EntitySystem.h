@@ -2,6 +2,7 @@
 
 #include "EncosysDefines.h"
 #include "EntityId.h"
+#include "FunctionTraits.h"
 #include <array>
 #include <bitset>
 #include <cassert>
@@ -39,7 +40,7 @@ public:
     explicit EntitySystem (ComponentTypeRegistry& componentRegistry);
 
     // Entity members
-    EntityId                                                       Create      ();
+    EntityId                                                       Create      (bool active = true);
     void                                                           Destroy     (EntityId e);
     bool                                                           IsValid     (EntityId e) const;
     bool                                                           IsActive    (EntityId e) const;
@@ -52,11 +53,17 @@ public:
     template <typename TComponent> std::decay_t<TComponent>*       Get    (EntityId e);
     template <typename TComponent> const std::decay_t<TComponent>* Get    (EntityId e) const;
 
+    // System members
+    template <typename TCallback>  void                            ForEach (TCallback&& callback);
+
 private:
     // Helper members
     void IndexSwapEntities (uint32_t lhsIndex, uint32_t rhsIndex);
     bool IndexIsActive (uint32_t index) const;
     void IndexSetActive (uint32_t& index, bool active);
+
+    template <typename TFunc, typename... Args, std::size_t... Seq>
+    void UnpackAndCallback (const Entity& entity, TFunc&& callback, TypeList<Args...>, Sequence<Seq...>);
 
     // Member variables
     ComponentTypeRegistry& m_componentRegistry;
@@ -130,6 +137,42 @@ void EntitySystem::Remove (EntityId e) {
         storage.Destroy(entity.GetComponentIndex(typeId));
         entity.RemoveComponentIndex(typeId);
     }
+}
+
+template <typename TFunc>
+void EntitySystem::ForEach (TFunc&& callback) {
+    using FTraits = FunctionTraits<decltype(callback)>;
+    static_assert(FTraits::ArgCount > 0, "First callback param must be ecs::Entity.");
+    static_assert(std::is_same<FTraits::Arg<0>, Entity>::value, "First callback param must be ecs::Entity.");
+    using FComponentArgs = typename FTraits::Args::RemoveFirst;
+
+    ComponentBitset targetMask{};
+    FComponentArgs::ForTypes([this, &targetMask] (auto t) {
+        (void)t;
+        assert(m_componentRegistry.HasType<TYPE_OF(t)>());
+        targetMask.set(m_componentRegistry.GetTypeId<TYPE_OF(t)>());
+    });
+
+    for (uint32_t i = 0; i < m_entityActiveCount; ++i) {
+        const Entity& entity = m_entities[i];
+        if (entity.HasComponentBitset(targetMask)) {
+            UnpackAndCallback(
+                entity,
+                callback,
+                FComponentArgs{},
+                typename GenerateSequence<FTraits::ArgCount>::Type{}
+            );
+        }
+    }
+}
+
+template <typename TFunc, typename... Args, std::size_t... Seq>
+void EntitySystem::UnpackAndCallback (const Entity& entity, TFunc&& callback, TypeList<Args...>, Sequence<Seq...>) {
+    auto params = std::make_tuple(
+        entity,
+        std::ref(m_componentRegistry.GetStorage<Args>().GetObject(entity.GetComponentIndex(m_componentRegistry.GetTypeId<Args>())))...
+    );
+    callback(std::get<Seq>(params)...);
 }
 
 } // namespace ecs

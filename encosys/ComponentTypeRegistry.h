@@ -68,6 +68,15 @@ public:
         return m_componentTypes[id];
     }
 
+    bool HasType (ComponentTypeId id) const {
+        return id < Count();
+    }
+
+    template <typename TComponent>
+    bool HasType () {
+        return HasType(GetTypeId<TComponent>());
+    }
+
     template <typename TComponent>
     auto& GetStorage () { return static_cast<BlockObjectPool<std::decay_t<TComponent>>&>(GetStorage(GetTypeId<TComponent>())); }
 
