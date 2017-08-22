@@ -10,6 +10,25 @@ EntitySystem::EntitySystem (ComponentTypeRegistry& componentRegistry) :
     m_componentRegistry{componentRegistry} {
 }
 
+EntitySystem::~EntitySystem () {
+    for (System* system : m_systems) {
+        delete system;
+    }
+}
+
+void EntitySystem::Update () {
+    std::vector<Entity> systemEntities;
+    for (System* system : m_systems) {
+        systemEntities.clear();
+        for (const EntityStorage& e : m_entities) {
+            if (e.HasComponentBitset(system->GetRequiredComponents())) {
+                systemEntities.push_back(Entity(*this, e));
+            }
+        }
+        system->Update(systemEntities);
+    }
+}
+
 EntityId EntitySystem::Create (bool active) {
     EntityId id(m_entityIdCounter);
     ++m_entityIdCounter;
@@ -17,20 +36,20 @@ EntityId EntitySystem::Create (bool active) {
     if (active) {
         if (m_entityActiveCount == EntityCount()) {
             m_idToEntity[id] = EntityCount();
-            m_entities.push_back(Entity(id));
+            m_entities.push_back(EntityStorage(id));
         }
         else {
-            const Entity& firstInactiveEntity = m_entities[m_entityActiveCount];
+            const EntityStorage& firstInactiveEntity = m_entities[m_entityActiveCount];
             m_idToEntity[firstInactiveEntity.GetId()] = EntityCount();
             m_entities.push_back(firstInactiveEntity);
             m_idToEntity[id] = m_entityActiveCount;
-            m_entities[m_entityActiveCount] = Entity(id);
+            m_entities[m_entityActiveCount] = EntityStorage(id);
         }
         ++m_entityActiveCount;
     }
     else {
         m_idToEntity[id] = EntityCount();
-        m_entities.push_back(Entity(id));
+        m_entities.push_back(EntityStorage(id));
     }
 
     return id;
@@ -43,7 +62,7 @@ void EntitySystem::Destroy (EntityId e) {
 
     // Cache off the information about this entity
     uint32_t entityIndex = entityIter->second;
-    Entity& entity = m_entities[entityIndex];
+    EntityStorage& entity = m_entities[entityIndex];
 
     // Destroy the components for this entity
     for (uint32_t i = 0; i < m_componentRegistry.Count(); ++i) {

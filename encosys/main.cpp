@@ -1,5 +1,6 @@
 #include "ComponentTypeRegistry.h"
 #include "EntitySystem.h"
+#include "System.h"
 #include <iostream>
 
 struct CPosition {
@@ -7,34 +8,51 @@ struct CPosition {
     float y;
 };
 
-void OutputPosition (const CPosition* position) {
+void OutputPosition (const char* prefix, ecs::EntityId id, const CPosition* position) {
     if (position) {
-        std::cout << "x: " << position->x << " y: " << position->y << std::endl;
+        std::cout << "[" << prefix << "] (id=" << id.Id() << ") x: " << position->x << " y: " << position->y << std::endl;
     }
 }
+
+struct SPhysics : public ecs::System {
+
+    virtual void Update (const std::vector<ecs::Entity>& entities) override {
+        for (const ecs::Entity& entity : entities) {
+            OutputPosition("System", entity.GetId(), entity.GetComponent<CPosition>());
+        }
+    }
+
+};
 
 int main () {
     uint32_t componentIndex = 0;
 
     ecs::ComponentTypeRegistry componentRegistry;
-    componentRegistry.Register<CPosition>("Position");
+    ecs::ComponentTypeId positionId = componentRegistry.Register<CPosition>("Position");
 
-    ecs::EntitySystem entitySystem(componentRegistry);
+    SPhysics physicsSystem;
+    physicsSystem.RequireComponent(positionId);
 
-    ecs::EntityId e = entitySystem.Create();
+    ecs::EntitySystem encosys(componentRegistry);
+    encosys.RegisterSystem<SPhysics>(physicsSystem);
+
+    ecs::EntityId e = encosys.Create();
 
     CPosition pos;
     pos.x = 5;
     pos.y = 10;
 
-    entitySystem.Add<CPosition>(e) = pos;
+    encosys.AddComponent<CPosition>(e) = pos;
 
-    CPosition* samePosition = entitySystem.Get<CPosition>(e);
+    CPosition* samePosition = encosys.GetComponent<CPosition>(e);
     samePosition->y = 7;
     
-    entitySystem.ForEach([](ecs::Entity entity, CPosition& pos) {
-        OutputPosition(&pos);
+    encosys.ForEach([](ecs::Entity entity, CPosition& pos) {
+        OutputPosition("ForEach1", entity.GetId(), &pos);
+        OutputPosition("ForEach2", entity.GetId(), entity.GetComponent<CPosition>());
     });
+
+    encosys.Update();
 
     return 0;
 }

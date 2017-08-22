@@ -35,6 +35,9 @@
     <ClInclude Include="TypeList.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="System.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

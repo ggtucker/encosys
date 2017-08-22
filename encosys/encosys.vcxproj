@@ -126,6 +126,7 @@
     <ClInclude Include="EntitySystem.h" />
     <ClInclude Include="BlockObjectPool.h" />
     <ClInclude Include="FunctionTraits.h" />
+    <ClInclude Include="System.h" />
     <ClInclude Include="TypeList.h" />
   </ItemGroup>
   <ItemGroup>
