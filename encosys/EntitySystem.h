@@ -51,7 +51,7 @@ public:
 
     // Component members
     template <typename TComponent> ComponentTypeId                              RegisterComponent ();
-    template <typename TComponent, typename... TArgs> std::decay_t<TComponent>& AddComponent      (EntityId e, TArgs&&... args);
+    template <typename TComponent, typename... TArgs> TComponent&               AddComponent      (EntityId e, TArgs&&... args);
     template <typename TComponent> void                                         RemoveComponent   (EntityId e);
     template <typename TComponent> TComponent*                                  GetComponent      (EntityId e);
     template <typename TComponent> const TComponent*                            GetComponent      (EntityId e) const;
@@ -133,7 +133,7 @@ ComponentTypeId EntitySystem::RegisterComponent () {
 }
 
 template <typename TComponent, typename... TArgs>
-std::decay_t<TComponent>& EntitySystem::AddComponent (EntityId e, TArgs&&... args) {
+TComponent& EntitySystem::AddComponent (EntityId e, TArgs&&... args) {
     // Verify this entity exists
     auto entityIter = m_idToEntity.find(e);
     assert(entityIter != m_idToEntity.end());
