@@ -36,7 +36,7 @@ public:
 
     const T& GetObject (uint32_t index) const {
         assert(index < m_size);
-        return *static_cast<T*>(BlockMemoryPool::Get(index));
+        return *static_cast<const T*>(BlockMemoryPool::Get(index));
     }
 
     // Must not destroy the same index more than once

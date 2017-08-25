@@ -10,6 +10,8 @@
 namespace ecs {
 
 using ComponentTypeId = uint32_t;
+using SystemTypeId = uint32_t;
+
 using ComponentBitset = std::bitset<ENCOSYS_MAX_COMPONENTS_>;
 
 const uint32_t c_invalidIndex = static_cast<uint32_t>(-1);

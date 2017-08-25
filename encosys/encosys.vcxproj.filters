@@ -11,9 +11,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ComponentTypeRegistry.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="EncosysDefines.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -36,6 +33,12 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="System.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ComponentRegistry.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SystemRegistry.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

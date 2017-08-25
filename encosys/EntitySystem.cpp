@@ -2,30 +2,29 @@
 
 #include <algorithm>
 #include <cassert>
-#include "ComponentTypeRegistry.h"
+#include "ComponentRegistry.h"
 
 namespace ecs {
 
-EntitySystem::EntitySystem (ComponentTypeRegistry& componentRegistry) :
-    m_componentRegistry{componentRegistry} {
-}
-
-EntitySystem::~EntitySystem () {
-    for (System* system : m_systems) {
-        delete system;
+void EntitySystem::Initialize () {
+    for (uint32_t i = 0; i < m_systemRegistry.Count(); ++i) {
+        m_systemRegistry.GetSystem(i)->Initialize(*this, m_systemRegistry[i]);
     }
 }
 
+
 void EntitySystem::Update () {
     std::vector<Entity> systemEntities;
-    for (System* system : m_systems) {
+    systemEntities.reserve(EntityCount());
+    for (uint32_t i = 0; i < m_systemRegistry.Count(); ++i) {
         systemEntities.clear();
+        const SystemType& systemType = m_systemRegistry[i];
         for (const EntityStorage& e : m_entities) {
-            if (e.HasComponentBitset(system->GetRequiredComponents())) {
-                systemEntities.push_back(Entity(*this, e));
+            if (e.HasComponentBitset(systemType.GetRequiredComponents())) {
+                systemEntities.push_back(Entity(*this, e, systemType));
             }
         }
-        system->Update(systemEntities);
+        m_systemRegistry.GetSystem(i)->Update(*this, systemEntities);
     }
 }
 
@@ -66,7 +65,7 @@ void EntitySystem::Destroy (EntityId e) {
 
     // Destroy the components for this entity
     for (uint32_t i = 0; i < m_componentRegistry.Count(); ++i) {
-        const ComponentTypeId typeId = m_componentRegistry[i].m_id;
+        const ComponentTypeId typeId = m_componentRegistry[i].Id();
         if (entity.HasComponent(typeId)) {
             auto& storage = m_componentRegistry.GetStorage(typeId);
             storage.Destroy(entity.GetComponentIndex(typeId));

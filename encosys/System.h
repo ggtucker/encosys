@@ -7,19 +7,15 @@ namespace ecs {
 
 // Forward declarations
 class Entity;
+class EntitySystem;
+class SystemType;
 
 class System {
 public:
-
     virtual ~System () = default;
 
-    void RequireComponent (ecs::ComponentTypeId componentId) { m_requiredComponents.set(componentId); }
-    ComponentBitset GetRequiredComponents () const { return m_requiredComponents; }
-
-    virtual void Update (const std::vector<Entity>& entities) = 0;
-
-private:
-    ComponentBitset m_requiredComponents;
+    virtual void Initialize (EntitySystem& entitySystem, SystemType& type) = 0;
+    virtual void Update (EntitySystem& entitySystem, const std::vector<Entity>& entities) = 0;
 };
 
 }

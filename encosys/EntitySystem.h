@@ -1,9 +1,10 @@
 #pragma once
 
+#include "ComponentRegistry.h"
 #include "EncosysDefines.h"
 #include "EntityId.h"
 #include "FunctionTraits.h"
-#include "System.h"
+#include "SystemRegistry.h"
 #include <array>
 #include <cassert>
 #include <unordered_map>
@@ -12,7 +13,6 @@
 namespace ecs {
 
 // Forward declarations
-class ComponentTypeRegistry;
 class Entity;
 
 class EntityStorage {
@@ -36,30 +36,33 @@ private:
 
 class EntitySystem {
 public:
-    explicit EntitySystem (ComponentTypeRegistry& componentRegistry);
-    virtual ~EntitySystem ();
+    EntitySystem () = default;
 
-    void                                                           Update          ();
+    void                                                                        Initialize        ();
+    void                                                                        Update            ();
 
     // Entity members
-    EntityId                                                       Create          (bool active = true);
-    void                                                           Destroy         (EntityId e);
-    bool                                                           IsValid         (EntityId e) const;
-    bool                                                           IsActive        (EntityId e) const;
-    void                                                           SetActive       (EntityId e, bool active);
-    uint32_t                                                       EntityCount     () const;
+    EntityId                                                                    Create            (bool active = true);
+    void                                                                        Destroy           (EntityId e);
+    bool                                                                        IsValid           (EntityId e) const;
+    bool                                                                        IsActive          (EntityId e) const;
+    void                                                                        SetActive         (EntityId e, bool active);
+    uint32_t                                                                    EntityCount       () const;
 
     // Component members
-    template <typename TComponent> std::decay_t<TComponent>&       AddComponent    (EntityId e, const TComponent& component = {});
-    template <typename TComponent> void                            RemoveComponent (EntityId e);
-    template <typename TComponent> std::decay_t<TComponent>*       GetComponent    (EntityId e);
-    template <typename TComponent> const std::decay_t<TComponent>* GetComponent    (EntityId e) const;
+    template <typename TComponent> ComponentTypeId                              RegisterComponent ();
+    template <typename TComponent, typename... TArgs> std::decay_t<TComponent>& AddComponent      (EntityId e, TArgs&&... args);
+    template <typename TComponent> void                                         RemoveComponent   (EntityId e);
+    template <typename TComponent> TComponent*                                  GetComponent      (EntityId e);
+    template <typename TComponent> const TComponent*                            GetComponent      (EntityId e) const;
+    template <typename TComponent> ComponentTypeId                              GetComponentTypeId () const;
 
     // System members
-    template <typename TSystem, typename... TArgs> void            RegisterSystem  (TArgs&&... args);
-    template <typename TCallback> void                             ForEach         (TCallback&& callback);
+    template <typename TSystem, typename... TArgs>   void                       RegisterSystem    (TArgs&&... args);
+    template <typename TCallback>                    void                       ForEach           (TCallback&& callback);
 
 private:
+    friend class Entity;
     // Helper members
     void IndexSwapEntities (uint32_t lhsIndex, uint32_t rhsIndex);
     bool IndexIsActive (uint32_t index) const;
@@ -69,8 +72,8 @@ private:
     void UnpackAndCallback (const EntityStorage& entity, TCallback&& callback, TypeList<Args...>, Sequence<Seq...>);
 
     // Member variables
-    ComponentTypeRegistry& m_componentRegistry;
-    std::vector<System*> m_systems;
+    ComponentRegistry m_componentRegistry;
+    SystemRegistry m_systemRegistry;
     std::unordered_map<EntityId, uint32_t> m_idToEntity;
     std::vector<EntityStorage> m_entities;
     uint32_t m_entityIdCounter{};
@@ -81,60 +84,105 @@ class Entity {
 public:
     Entity (EntitySystem& entitySystem, const EntityStorage& entityStorage) :
         m_entitySystem{entitySystem},
-        m_entityStorage{entityStorage} {}
+        m_entityStorage{entityStorage},
+        m_systemType{nullptr} {
+    }
+
+    Entity (EntitySystem& entitySystem, const EntityStorage& entityStorage, const SystemType& systemType) :
+        m_entitySystem{entitySystem},
+        m_entityStorage{entityStorage},
+        m_systemType{&systemType} {
+    }
 
     EntityId GetId () const {
         return m_entityStorage.GetId();
     }
 
     template <typename TComponent>
-    std::decay_t<TComponent>* GetComponent () {
-        return m_entitySystem.GetComponent<TComponent>(m_entityStorage.GetId());
+    TComponent* WriteComponent () const {
+        assert(!m_systemType || m_systemType->IsWriteAllowed<TComponent>(m_entitySystem));
+        return const_cast<TComponent*>(static_cast<const Entity*>(this)->ReadComponent<TComponent>());
     }
 
     template <typename TComponent>
-    const std::decay_t<TComponent>* GetComponent () const {
-        return m_entitySystem.GetComponent<TComponent>(m_entityStorage.GetId());
+    const TComponent* ReadComponent () const {
+        assert(!m_systemType || m_systemType->IsReadAllowed<TComponent>(m_entitySystem));
+
+        // Retrieve the registered type of the component
+        const ComponentTypeId typeId = m_entitySystem.m_componentRegistry.GetTypeId<TComponent>();
+
+        // Retrieve the storage for this component type
+        auto& storage = m_entitySystem.m_componentRegistry.GetStorage<TComponent>();
+
+        // Find the component index for this entity and return the component
+        if (!m_entityStorage.HasComponent(typeId)) {
+            return nullptr;
+        }
+        return &storage.GetObject(m_entityStorage.GetComponentIndex(typeId));
     }
 
 private:
     EntitySystem& m_entitySystem;
     const EntityStorage& m_entityStorage;
+    const SystemType* m_systemType;
 };
 
 template <typename TComponent>
-std::decay_t<TComponent>& EntitySystem::AddComponent (EntityId e, const TComponent& component) {
+ComponentTypeId EntitySystem::RegisterComponent () {
+    return m_componentRegistry.Register<TComponent>();
+}
+
+template <typename TComponent, typename... TArgs>
+std::decay_t<TComponent>& EntitySystem::AddComponent (EntityId e, TArgs&&... args) {
     // Verify this entity exists
     auto entityIter = m_idToEntity.find(e);
     assert(entityIter != m_idToEntity.end());
 
     // Retrieve the registered type of the component
     const ComponentTypeId typeId = m_componentRegistry.GetTypeId<TComponent>();
-    const ComponentType& type = m_componentRegistry.GetType(typeId);
 
     // Retrieve the storage for this component type
     auto& storage = m_componentRegistry.GetStorage<TComponent>();
 
     // Create the component and set the component index for this entity
-    uint32_t componentIndex = storage.Create(component);
+    uint32_t componentIndex = storage.Create(std::forward<TArgs>(args)...);
     m_entities[entityIter->second].SetComponentIndex(typeId, componentIndex);
     return storage.GetObject(componentIndex);
 }
 
 template <typename TComponent>
-std::decay_t<TComponent>* EntitySystem::GetComponent (EntityId e) {
-    return const_cast<std::decay_t<TComponent>*>(static_cast<const EntitySystem*>(this)->GetComponent<TComponent>(e));
-}
-
-template <typename TComponent>
-const std::decay_t<TComponent>* EntitySystem::GetComponent (EntityId e) const {
+void EntitySystem::RemoveComponent (EntityId e) {
     // Verify this entity exists
     auto entityIter = m_idToEntity.find(e);
     assert(entityIter != m_idToEntity.end());
 
     // Retrieve the registered type of the component
     const ComponentTypeId typeId = m_componentRegistry.GetTypeId<TComponent>();
-    const ComponentType& type = m_componentRegistry.GetType(typeId);
+
+    // Retrieve the storage for this component type
+    auto& storage = m_componentRegistry.GetStorage<TComponent>();
+
+    // Find the component index for this entity and destroy the component
+    EntityStorage& entity = m_entities[entityIter->second];
+    if (entity.HasComponent(typeId)) {
+        storage.Destroy(entity.GetComponentIndex(typeId));
+        entity.RemoveComponentIndex(typeId);
+    }
+}
+
+template <typename TComponent>
+TComponent* EntitySystem::GetComponent (EntityId e) {
+    return const_cast<TComponent*>(static_cast<const EntitySystem*>(this)->GetComponent<TComponent>(e));
+}
+
+template <typename TComponent>
+const TComponent* EntitySystem::GetComponent (EntityId e) const {
+    // Verify this entity exists
+    auto entityIter = m_idToEntity.find(e);
+    assert(entityIter != m_idToEntity.end());
+
+    // Retrieve the registered type of the component
+    const ComponentTypeId typeId = m_componentRegistry.GetTypeId<TComponent>();
 
     // Retrieve the storage for this component type
     auto& storage = m_componentRegistry.GetStorage<TComponent>();
@@ -148,32 +196,13 @@ const std::decay_t<TComponent>* EntitySystem::GetComponent (EntityId e) const {
 }
 
 template <typename TComponent>
-void EntitySystem::RemoveComponent (EntityId e) {
-    // Verify this entity exists
-    auto entityIter = m_idToEntity.find(e);
-    assert(entityIter != m_idToEntity.end());
-
-    // Retrieve the registered type of the component
-    const ComponentTypeId typeId = m_componentRegistry.GetTypeId<TComponent>();
-    const ComponentType& type = m_componentRegistry.GetType(typeId);
-
-    // Retrieve the storage for this component type
-    auto& storage = m_componentRegistry.GetStorage<TComponent>();
-
-    // Find the component index for this entity and destroy the component
-    EntityStorage& entity = m_entities[entityIter->second];
-    if (entity.HasComponent(typeId)) {
-        storage.Destroy(entity.GetComponentIndex(typeId));
-        entity.RemoveComponentIndex(typeId);
-    }
+ComponentTypeId EntitySystem::GetComponentTypeId () const {
+    return m_componentRegistry.GetTypeId<TComponent>();
 }
 
 template <typename TSystem, typename... TArgs>
 void EntitySystem::RegisterSystem (TArgs&&... args) {
-    static_assert(std::is_base_of<System, TSystem>::value, "TSystem must be derived from System");
-    System* system = new TSystem(std::forward<TArgs>(args)...);
-    assert(system != nullptr);
-    m_systems.push_back(system);
+    m_systemRegistry.Register<TSystem>(std::forward<TArgs>(args)...);
 }
 
 template <typename TCallback>

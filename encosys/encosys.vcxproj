@@ -120,13 +120,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="BlockMemoryPool.h" />
-    <ClInclude Include="ComponentTypeRegistry.h" />
+    <ClInclude Include="ComponentRegistry.h" />
     <ClInclude Include="EncosysDefines.h" />
     <ClInclude Include="EntityId.h" />
     <ClInclude Include="EntitySystem.h" />
     <ClInclude Include="BlockObjectPool.h" />
     <ClInclude Include="FunctionTraits.h" />
     <ClInclude Include="System.h" />
+    <ClInclude Include="SystemRegistry.h" />
     <ClInclude Include="TypeList.h" />
   </ItemGroup>
   <ItemGroup>
