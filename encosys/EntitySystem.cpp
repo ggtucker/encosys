@@ -13,7 +13,7 @@ void EntitySystem::Initialize () {
 }
 
 
-void EntitySystem::Update () {
+void EntitySystem::Update (TimeDelta delta) {
     std::vector<Entity> systemEntities;
     systemEntities.reserve(EntityCount());
     for (uint32_t i = 0; i < m_systemRegistry.Count(); ++i) {
@@ -24,7 +24,7 @@ void EntitySystem::Update () {
                 systemEntities.push_back(Entity(*this, e, systemType));
             }
         }
-        m_systemRegistry.GetSystem(i)->Update(*this, systemEntities);
+        m_systemRegistry.GetSystem(i)->Update(*this, systemEntities, delta);
     }
 }
 

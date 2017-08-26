@@ -19,7 +19,7 @@ struct SPhysics : public ecs::System {
         type.UseComponent<CPosition>(entitySystem, ecs::ComponentRequirement::Required, ecs::ComponentUsage::ReadOnly);
     }
 
-    virtual void Update (ecs::EntitySystem&, const std::vector<ecs::Entity>& entities) override {
+    virtual void Update (ecs::EntitySystem&, const std::vector<ecs::Entity>& entities, ecs::TimeDelta delta) override {
         for (const ecs::Entity& entity : entities) {
             assert(entity.ReadComponent<CPosition>() != nullptr);
             OutputPosition("System", entity.GetId(), entity.ReadComponent<CPosition>());
@@ -57,7 +57,7 @@ int main () {
     });
 
     encosys.Initialize();
-    encosys.Update();
+    encosys.Update(0.0625f);
 
     return 0;
 }

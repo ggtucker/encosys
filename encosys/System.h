@@ -15,7 +15,7 @@ public:
     virtual ~System () = default;
 
     virtual void Initialize (EntitySystem& entitySystem, SystemType& type) = 0;
-    virtual void Update (EntitySystem& entitySystem, const std::vector<Entity>& entities) = 0;
+    virtual void Update (EntitySystem& entitySystem, const std::vector<Entity>& entities, TimeDelta delta) = 0;
 };
 
 }

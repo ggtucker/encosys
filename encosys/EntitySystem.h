@@ -36,10 +36,8 @@ private:
 
 class EntitySystem {
 public:
+    // Constructors
     EntitySystem () = default;
-
-    void                                                                        Initialize        ();
-    void                                                                        Update            ();
 
     // Entity members
     EntityId                                                                    Create            (bool active = true);
@@ -59,6 +57,10 @@ public:
 
     // System members
     template <typename TSystem, typename... TArgs>   void                       RegisterSystem    (TArgs&&... args);
+    void                                                                        Initialize        ();
+    void                                                                        Update            (TimeDelta delta);
+
+    // Other members
     template <typename TCallback>                    void                       ForEach           (TCallback&& callback);
 
 private:
