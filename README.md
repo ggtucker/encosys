@@ -19,7 +19,7 @@ struct Position {
 ## entities
 An entity is just an ID. From this ID we can add, remove, and query for components.
 ```cpp
-ecs::EntitySystem encosys;
+ecs::Encosys encosys;
 ecs::EntityId entityId = encosys.Create();
 ```
 #### adding a component
@@ -44,14 +44,14 @@ encosys.RemoveComponent<Position>(entityId);
 A system runs logic on the entities that have a specific subset of components. Systems must inherit from the abstract ecs::System class and provide implementations for the Initialize and Update functions.
 ```cpp
 struct PhysicsSystem : public ecs::System {
-    virtual void Initialize (ecs::EntitySystem& encosys, ecs::SystemType& type) override {
+    virtual void Initialize (ecs::Encosys& encosys, ecs::SystemType& type) override {
         // Specify the dependencies for this system.
         encosys.SetRequiredComponent<Position>(type, ecs::ComponentUsage::Write);
         encosys.SetRequiredComponent<Velocity>(type, ecs::ComponentUsage::Write);
         encosys.SetOptionalComponent<Acceleration>(type, ecs::ComponentUsage::ReadOnly);
     }
     
-    virtual void Update (ecs::EntitySystem&, const std::vector<ecs::Entity>& entities, ecs::TimeDelta delta) override {
+    virtual void Update (ecs::Encosys&, const std::vector<ecs::Entity>& entities, ecs::TimeDelta delta) override {
         // Update this system given a time delta.
         for (const ecs::Entity& entity : entities) {
             Velocity* velocity = entity.WriteComponent<Velocity>();
@@ -85,7 +85,7 @@ encosys.ForEach([](ecs::Entity entity, Position& position, Velocity& velocity) {
 ## setting up encosys
 ```cpp
 // 1. create the framework wrapper
-ecs::EntitySystem encosys;
+ecs::Encosys encosys;
 
 // 2. register component types
 encosys.RegisterComponent<Position>();
