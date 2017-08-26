@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{7BE36514-8FD0-48A5-B23A-7FABFD46B4EB}</ProjectGuid>
+    <ProjectGuid>{0BAFF1A1-6DD8-4A10-AAFB-A891C51FCF17}</ProjectGuid>
     <RootNamespace>simple_encosys</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
     <ProjectName>encosys</ProjectName>
@@ -123,7 +123,7 @@
     <ClInclude Include="ComponentRegistry.h" />
     <ClInclude Include="EncosysDefines.h" />
     <ClInclude Include="EntityId.h" />
-    <ClInclude Include="EntitySystem.h" />
+    <ClInclude Include="Encosys.h" />
     <ClInclude Include="BlockObjectPool.h" />
     <ClInclude Include="FunctionTraits.h" />
     <ClInclude Include="System.h" />
@@ -133,7 +133,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BlockMemoryPool.cpp" />
-    <ClCompile Include="EntitySystem.cpp" />
+    <ClCompile Include="Encosys.cpp" />
     <ClCompile Include="SystemRegistry.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

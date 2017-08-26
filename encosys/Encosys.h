@@ -34,10 +34,10 @@ private:
     std::array<uint32_t, ENCOSYS_MAX_COMPONENTS_> m_components;
 };
 
-class EntitySystem {
+class Encosys {
 public:
     // Constructors
-    EntitySystem () = default;
+    Encosys () = default;
 
     // Entity members
     EntityId                                                      Create               (bool active = true);
@@ -86,14 +86,14 @@ private:
 
 class Entity {
 public:
-    Entity (EntitySystem& entitySystem, const EntityStorage& entityStorage) :
-        m_entitySystem{entitySystem},
+    Entity (Encosys& encosys, const EntityStorage& entityStorage) :
+        m_encosys{encosys},
         m_entityStorage{entityStorage},
         m_systemType{nullptr} {
     }
 
-    Entity (EntitySystem& entitySystem, const EntityStorage& entityStorage, const SystemType& systemType) :
-        m_entitySystem{entitySystem},
+    Entity (Encosys& encosys, const EntityStorage& entityStorage, const SystemType& systemType) :
+        m_encosys{encosys},
         m_entityStorage{entityStorage},
         m_systemType{&systemType} {
     }
@@ -104,19 +104,19 @@ public:
 
     template <typename TComponent>
     TComponent* WriteComponent () const {
-        assert(!m_systemType || m_systemType->IsWriteAllowed(m_entitySystem.GetComponentTypeId<TComponent>()));
+        assert(!m_systemType || m_systemType->IsWriteAllowed(m_encosys.GetComponentTypeId<TComponent>()));
         return const_cast<TComponent*>(static_cast<const Entity*>(this)->ReadComponent<TComponent>());
     }
 
     template <typename TComponent>
     const TComponent* ReadComponent () const {
-        assert(!m_systemType || m_systemType->IsReadAllowed(m_entitySystem.GetComponentTypeId<TComponent>()));
+        assert(!m_systemType || m_systemType->IsReadAllowed(m_encosys.GetComponentTypeId<TComponent>()));
 
         // Retrieve the registered type of the component
-        const ComponentTypeId typeId = m_entitySystem.m_componentRegistry.GetTypeId<TComponent>();
+        const ComponentTypeId typeId = m_encosys.m_componentRegistry.GetTypeId<TComponent>();
 
         // Retrieve the storage for this component type
-        auto& storage = m_entitySystem.m_componentRegistry.GetStorage<TComponent>();
+        auto& storage = m_encosys.m_componentRegistry.GetStorage<TComponent>();
 
         // Find the component index for this entity and return the component
         if (!m_entityStorage.HasComponent(typeId)) {
@@ -126,18 +126,18 @@ public:
     }
 
 private:
-    EntitySystem& m_entitySystem;
+    Encosys& m_encosys;
     const EntityStorage& m_entityStorage;
     const SystemType* m_systemType;
 };
 
 template <typename TComponent>
-ComponentTypeId EntitySystem::RegisterComponent () {
+ComponentTypeId Encosys::RegisterComponent () {
     return m_componentRegistry.Register<TComponent>();
 }
 
 template <typename TComponent, typename... TArgs>
-TComponent& EntitySystem::AddComponent (EntityId e, TArgs&&... args) {
+TComponent& Encosys::AddComponent (EntityId e, TArgs&&... args) {
     // Verify this entity exists
     auto entityIter = m_idToEntity.find(e);
     assert(entityIter != m_idToEntity.end());
@@ -155,7 +155,7 @@ TComponent& EntitySystem::AddComponent (EntityId e, TArgs&&... args) {
 }
 
 template <typename TComponent>
-void EntitySystem::RemoveComponent (EntityId e) {
+void Encosys::RemoveComponent (EntityId e) {
     // Verify this entity exists
     auto entityIter = m_idToEntity.find(e);
     assert(entityIter != m_idToEntity.end());
@@ -175,12 +175,12 @@ void EntitySystem::RemoveComponent (EntityId e) {
 }
 
 template <typename TComponent>
-TComponent* EntitySystem::GetComponent (EntityId e) {
-    return const_cast<TComponent*>(static_cast<const EntitySystem*>(this)->GetComponent<TComponent>(e));
+TComponent* Encosys::GetComponent (EntityId e) {
+    return const_cast<TComponent*>(static_cast<const Encosys*>(this)->GetComponent<TComponent>(e));
 }
 
 template <typename TComponent>
-const TComponent* EntitySystem::GetComponent (EntityId e) const {
+const TComponent* Encosys::GetComponent (EntityId e) const {
     // Verify this entity exists
     auto entityIter = m_idToEntity.find(e);
     assert(entityIter != m_idToEntity.end());
@@ -200,27 +200,27 @@ const TComponent* EntitySystem::GetComponent (EntityId e) const {
 }
 
 template <typename TComponent>
-ComponentTypeId EntitySystem::GetComponentTypeId () const {
+ComponentTypeId Encosys::GetComponentTypeId () const {
     return m_componentRegistry.GetTypeId<TComponent>();
 }
 
 template <typename TSystem, typename... TArgs>
-void EntitySystem::RegisterSystem (TArgs&&... args) {
+void Encosys::RegisterSystem (TArgs&&... args) {
     m_systemRegistry.Register<TSystem>(std::forward<TArgs>(args)...);
 }
 
 template <typename TComponent>
-void EntitySystem::SetRequiredComponent (SystemType& type, ComponentUsage usage) {
+void Encosys::SetRequiredComponent (SystemType& type, ComponentUsage usage) {
     type.UseComponent(m_componentRegistry.GetTypeId<TComponent>(), ecs::ComponentRequirement::Required, usage);
 }
 
 template <typename TComponent>
-void EntitySystem::SetOptionalComponent (SystemType& type, ComponentUsage usage) {
+void Encosys::SetOptionalComponent (SystemType& type, ComponentUsage usage) {
     type.UseComponent(m_componentRegistry.GetTypeId<TComponent>(), ecs::ComponentRequirement::Optional, usage);
 }
 
 template <typename TCallback>
-void EntitySystem::ForEach (TCallback&& callback) {
+void Encosys::ForEach (TCallback&& callback) {
     using FTraits = FunctionTraits<decltype(callback)>;
     static_assert(FTraits::ArgCount > 0, "First callback param must be ecs::Entity.");
     static_assert(std::is_same<FTraits::Arg<0>, Entity>::value, "First callback param must be ecs::Entity.");
@@ -247,7 +247,7 @@ void EntitySystem::ForEach (TCallback&& callback) {
 }
 
 template <typename TCallback, typename... Args, std::size_t... Seq>
-void EntitySystem::UnpackAndCallback (const EntityStorage& entity, TCallback&& callback, TypeList<Args...>, Sequence<Seq...>) {
+void Encosys::UnpackAndCallback (const EntityStorage& entity, TCallback&& callback, TypeList<Args...>, Sequence<Seq...>) {
     auto params = std::make_tuple(
         ecs::Entity(*this, entity),
         std::ref(m_componentRegistry.GetStorage<Args>().GetObject(entity.GetComponentIndex(m_componentRegistry.GetTypeId<Args>())))...

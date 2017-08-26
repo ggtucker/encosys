@@ -1,4 +1,4 @@
-#include "EntitySystem.h"
+#include "Encosys.h"
 
 #include <algorithm>
 #include <cassert>
@@ -7,14 +7,14 @@
 
 namespace ecs {
 
-void EntitySystem::Initialize () {
+void Encosys::Initialize () {
     for (uint32_t i = 0; i < m_systemRegistry.Count(); ++i) {
         m_systemRegistry.GetSystem(i)->Initialize(*this, m_systemRegistry[i]);
     }
 }
 
 
-void EntitySystem::Update (TimeDelta delta) {
+void Encosys::Update (TimeDelta delta) {
     std::vector<Entity> systemEntities;
     systemEntities.reserve(EntityCount());
     for (uint32_t i = 0; i < m_systemRegistry.Count(); ++i) {
@@ -29,7 +29,7 @@ void EntitySystem::Update (TimeDelta delta) {
     }
 }
 
-EntityId EntitySystem::Create (bool active) {
+EntityId Encosys::Create (bool active) {
     EntityId id(m_entityIdCounter);
     ++m_entityIdCounter;
 
@@ -55,7 +55,7 @@ EntityId EntitySystem::Create (bool active) {
     return id;
 }
 
-void EntitySystem::Destroy (EntityId e) {
+void Encosys::Destroy (EntityId e) {
     // Verify this entity exists
     auto entityIter = m_idToEntity.find(e);
     assert(entityIter != m_idToEntity.end());
@@ -81,11 +81,11 @@ void EntitySystem::Destroy (EntityId e) {
     m_entities.pop_back();
 }
 
-bool EntitySystem::IsValid (EntityId e) const {
+bool Encosys::IsValid (EntityId e) const {
     return m_idToEntity.find(e) != m_idToEntity.end();
 }
 
-bool EntitySystem::IsActive (EntityId e) const {
+bool Encosys::IsActive (EntityId e) const {
     // Verify this entity exists
     auto entityIter = m_idToEntity.find(e);
     assert(entityIter != m_idToEntity.end());
@@ -93,7 +93,7 @@ bool EntitySystem::IsActive (EntityId e) const {
     return IndexIsActive(entityIter->second);
 }
 
-void EntitySystem::SetActive (EntityId e, bool active) {
+void Encosys::SetActive (EntityId e, bool active) {
     // Verify this entity exists
     auto entityIter = m_idToEntity.find(e);
     assert(entityIter != m_idToEntity.end());
@@ -102,11 +102,11 @@ void EntitySystem::SetActive (EntityId e, bool active) {
     IndexSetActive(entityIndex, active);
 }
 
-uint32_t EntitySystem::EntityCount () const {
+uint32_t Encosys::EntityCount () const {
     return static_cast<uint32_t>(m_entities.size());
 }
 
-void EntitySystem::IndexSwapEntities (uint32_t lhsIndex, uint32_t rhsIndex) {
+void Encosys::IndexSwapEntities (uint32_t lhsIndex, uint32_t rhsIndex) {
     if (lhsIndex == rhsIndex) {
         return;
     }
@@ -115,11 +115,11 @@ void EntitySystem::IndexSwapEntities (uint32_t lhsIndex, uint32_t rhsIndex) {
     std::swap(m_entities[lhsIndex], m_entities[rhsIndex]);
 }
 
-bool EntitySystem::IndexIsActive (uint32_t index) const {
+bool Encosys::IndexIsActive (uint32_t index) const {
     return index < m_entityActiveCount;
 }
 
-void EntitySystem::IndexSetActive (uint32_t& index, bool active) {
+void Encosys::IndexSetActive (uint32_t& index, bool active) {
     if (active == IndexIsActive(index)) {
         return;
     }

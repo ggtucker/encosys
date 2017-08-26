@@ -5,7 +5,7 @@
 
 namespace ecs {
 
-class EntitySystem;
+class Encosys;
 
 class EntityId {
 public:
@@ -21,7 +21,7 @@ public:
     friend bool operator>= (const EntityId& lhs, const EntityId& rhs) { return lhs.m_id >= rhs.m_id; }
 
 private:
-    friend class EntitySystem;
+    friend class Encosys;
     explicit EntityId (uint32_t id) : m_id{id} {}
     uint32_t m_id{static_cast<uint32_t>(-1)};
 };
