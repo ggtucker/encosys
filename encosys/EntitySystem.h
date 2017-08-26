@@ -17,7 +17,7 @@ class Entity;
 
 class EntityStorage {
 public:
-    explicit EntityStorage (EntityId id) : m_id{id} {}
+    explicit EntityStorage        (EntityId id) : m_id{id} {}
 
     EntityId GetId                () const { return m_id; }
 
@@ -40,28 +40,30 @@ public:
     EntitySystem () = default;
 
     // Entity members
-    EntityId                                                                    Create            (bool active = true);
-    void                                                                        Destroy           (EntityId e);
-    bool                                                                        IsValid           (EntityId e) const;
-    bool                                                                        IsActive          (EntityId e) const;
-    void                                                                        SetActive         (EntityId e, bool active);
-    uint32_t                                                                    EntityCount       () const;
+    EntityId                                                      Create               (bool active = true);
+    void                                                          Destroy              (EntityId e);
+    bool                                                          IsValid              (EntityId e) const;
+    bool                                                          IsActive             (EntityId e) const;
+    void                                                          SetActive            (EntityId e, bool active);
+    uint32_t                                                      EntityCount          () const;
 
     // Component members
-    template <typename TComponent> ComponentTypeId                              RegisterComponent ();
-    template <typename TComponent, typename... TArgs> TComponent&               AddComponent      (EntityId e, TArgs&&... args);
-    template <typename TComponent> void                                         RemoveComponent   (EntityId e);
-    template <typename TComponent> TComponent*                                  GetComponent      (EntityId e);
-    template <typename TComponent> const TComponent*                            GetComponent      (EntityId e) const;
-    template <typename TComponent> ComponentTypeId                              GetComponentTypeId () const;
+    template <typename TComponent> ComponentTypeId                RegisterComponent    ();
+    template <typename TComponent, typename... TArgs> TComponent& AddComponent         (EntityId e, TArgs&&... args);
+    template <typename TComponent> void                           RemoveComponent      (EntityId e);
+    template <typename TComponent> TComponent*                    GetComponent         (EntityId e);
+    template <typename TComponent> const TComponent*              GetComponent         (EntityId e) const;
+    template <typename TComponent> ComponentTypeId                GetComponentTypeId   () const;
 
     // System members
-    template <typename TSystem, typename... TArgs>   void                       RegisterSystem    (TArgs&&... args);
-    void                                                                        Initialize        ();
-    void                                                                        Update            (TimeDelta delta);
+    template <typename TSystem, typename... TArgs>   void         RegisterSystem       (TArgs&&... args);
+    template <typename TComponent> void                           SetRequiredComponent (SystemType& type, ComponentUsage usage);
+    template <typename TComponent> void                           SetOptionalComponent (SystemType& type, ComponentUsage usage);
+    void                                                          Initialize           ();
+    void                                                          Update               (TimeDelta delta);
 
     // Other members
-    template <typename TCallback>                    void                       ForEach           (TCallback&& callback);
+    template <typename TCallback> void                            ForEach              (TCallback&& callback);
 
 private:
     friend class Entity;
@@ -102,13 +104,13 @@ public:
 
     template <typename TComponent>
     TComponent* WriteComponent () const {
-        assert(!m_systemType || m_systemType->IsWriteAllowed<TComponent>(m_entitySystem));
+        assert(!m_systemType || m_systemType->IsWriteAllowed(m_entitySystem.GetComponentTypeId<TComponent>()));
         return const_cast<TComponent*>(static_cast<const Entity*>(this)->ReadComponent<TComponent>());
     }
 
     template <typename TComponent>
     const TComponent* ReadComponent () const {
-        assert(!m_systemType || m_systemType->IsReadAllowed<TComponent>(m_entitySystem));
+        assert(!m_systemType || m_systemType->IsReadAllowed(m_entitySystem.GetComponentTypeId<TComponent>()));
 
         // Retrieve the registered type of the component
         const ComponentTypeId typeId = m_entitySystem.m_componentRegistry.GetTypeId<TComponent>();
@@ -205,6 +207,16 @@ ComponentTypeId EntitySystem::GetComponentTypeId () const {
 template <typename TSystem, typename... TArgs>
 void EntitySystem::RegisterSystem (TArgs&&... args) {
     m_systemRegistry.Register<TSystem>(std::forward<TArgs>(args)...);
+}
+
+template <typename TComponent>
+void EntitySystem::SetRequiredComponent (SystemType& type, ComponentUsage usage) {
+    type.UseComponent(m_componentRegistry.GetTypeId<TComponent>(), ecs::ComponentRequirement::Required, usage);
+}
+
+template <typename TComponent>
+void EntitySystem::SetOptionalComponent (SystemType& type, ComponentUsage usage) {
+    type.UseComponent(m_componentRegistry.GetTypeId<TComponent>(), ecs::ComponentRequirement::Optional, usage);
 }
 
 template <typename TCallback>

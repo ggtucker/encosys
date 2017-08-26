@@ -41,15 +41,18 @@
     <ClInclude Include="SystemRegistry.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="SystemType.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="EntitySystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="BlockMemoryPool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SystemRegistry.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

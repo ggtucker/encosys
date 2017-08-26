@@ -2,7 +2,7 @@
 
 #include "BlockObjectPool.h"
 #include "EncosysDefines.h"
-#include "System.h"
+#include "SystemType.h"
 #include <array>
 #include <cassert>
 #include <map>
@@ -10,53 +10,11 @@
 
 namespace ecs {
 
-enum class ComponentRequirement {
-    Required,
-    Optional
-};
-
-enum class ComponentUsage {
-    ReadOnly,
-    Write
-};
-
-class SystemType {
-public:
-    SystemType () {}
-    explicit SystemType (SystemTypeId id) : m_id{id} {}
-
-    SystemTypeId Id () const { return m_id; }
-
-    template <typename TComponent>
-    void UseComponent (const EntitySystem& entitySystem, ComponentRequirement requirement, ComponentUsage usage) {
-        const ComponentTypeId typeId = entitySystem.GetComponentTypeId<TComponent>();
-        m_requiredComponents.set(typeId, requirement == ComponentRequirement::Required);
-        m_readComponents.set(typeId);
-        m_writeComponents.set(typeId, usage == ComponentUsage::Write);
-    }
-
-    const ComponentBitset& GetRequiredComponents () const { return m_requiredComponents; }
-
-    template <typename TComponent>
-    bool IsReadAllowed (const EntitySystem& entitySystem) const { return m_readComponents.test(entitySystem.GetComponentTypeId<TComponent>()); }
-
-    template <typename TComponent>
-    bool IsWriteAllowed (const EntitySystem& entitySystem) const { return m_writeComponents.test(entitySystem.GetComponentTypeId<TComponent>()); }
-
-private:
-    SystemTypeId m_id{};
-    ComponentBitset m_requiredComponents{};
-    ComponentBitset m_readComponents{};
-    ComponentBitset m_writeComponents{};
-};
+class System;
 
 class SystemRegistry {
 public:
-    virtual ~SystemRegistry () {
-        for (System* system : m_systems) {
-            delete system;
-        }
-    }
+    virtual ~SystemRegistry ();
 
     template <typename TSystem, typename... TArgs>
     SystemTypeId Register (TArgs&&... args) {

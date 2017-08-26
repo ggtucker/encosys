@@ -1,14 +1,10 @@
 #pragma once
 
 #include <vector>
-#include "EncosysDefines.h"
+#include "EntitySystem.h"
+#include "SystemType.h"
 
 namespace ecs {
-
-// Forward declarations
-class Entity;
-class EntitySystem;
-class SystemType;
 
 class System {
 public:

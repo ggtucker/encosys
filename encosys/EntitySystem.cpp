@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include "ComponentRegistry.h"
+#include "System.h"
 
 namespace ecs {
 
