@@ -44,11 +44,11 @@ encosys.RemoveComponent<Position>(entityId);
 A system runs logic on the entities that have a specific subset of components. Systems must inherit from the abstract ecs::System class and provide implementations for the Initialize and Update functions.
 ```cpp
 struct PhysicsSystem : public ecs::System {
-    virtual void Initialize (ecs::EntitySystem& entitySystem, ecs::SystemType& type) override {
+    virtual void Initialize (ecs::EntitySystem& encosys, ecs::SystemType& type) override {
         // Specify the dependencies for this system.
-        type.UseComponent<Position>(entitySystem, ecs::ComponentRequirement::Required, ecs::ComponentUsage::Write);
-        type.UseComponent<Velocity>(entitySystem, ecs::ComponentRequirement::Required, ecs::ComponentUsage::Write);
-        type.UseComponent<Acceleration>(entitySystem, ecs::ComponentRequirement::Optional, ecs::ComponentUsage::ReadOnly);
+        encosys.SetRequiredComponent<Position>(type, ecs::ComponentUsage::Write);
+        encosys.SetRequiredComponent<Velocity>(type, ecs::ComponentUsage::Write);
+        encosys.SetOptionalComponent<Acceleration>(type, ecs::ComponentUsage::ReadOnly);
     }
     
     virtual void Update (ecs::EntitySystem&, const std::vector<ecs::Entity>& entities, ecs::TimeDelta delta) override {
