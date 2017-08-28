@@ -46,23 +46,23 @@ A system runs logic on the entities that have a specific subset of components. S
 struct PhysicsSystem : public ecs::System {
     virtual void Initialize (ecs::Encosys& encosys, ecs::SystemType& type) override {
         // Specify the dependencies for this system.
-        encosys.SetRequiredComponent<Position>(type, ecs::ComponentUsage::Write);
-        encosys.SetRequiredComponent<Velocity>(type, ecs::ComponentUsage::Write);
-        encosys.SetOptionalComponent<Acceleration>(type, ecs::ComponentUsage::ReadOnly);
+        type.RequireComponent<Position>(encosys.GetComponentType<Position>(), ecs::ComponentUsage::Write);
+        type.RequireComponent<Velocity>(encosys.GetComponentType<Velocity>(), ecs::ComponentUsage::Write);
+        type.OptionalizeComponent<Acceleration>(type, ecs::ComponentUsage::Read);
     }
     
-    virtual void Update (ecs::Encosys&, const std::vector<ecs::Entity>& entities, ecs::TimeDelta delta) override {
+    virtual void Update (ecs::SystemContext& context, ecs::TimeDelta delta) override {
         // Update this system given a time delta.
-        for (const ecs::Entity& entity : entities) {
-            Velocity* velocity = entity.WriteComponent<Velocity>();
+        for (uint32_t i = 0; i < context.EntityCount(); ++i) {
+            Velocity& velocity = *context.WriteComponent<Velocity>(i);
             // Since acceleration was flagged as an optional component, we must check its existence.
-            if (const CAcceleration* acceleration = entity.ReadComponent<CAcceleration>()) {
-                velocity->x += acceleration->x * delta;
-                velocity->y += acceleration->y * delta;
+            if (const CAcceleration* acceleration = context.ReadComponent<CAcceleration>(i)) {
+                velocity.x += acceleration->x * delta;
+                velocity.y += acceleration->y * delta;
             }
-            Position* position = entity.WriteComponent<Position>();
-            position->x += velocity->x * delta;
-            position->y += velocity->y * delta;
+            Position& position = *context.WriteComponent<Position>(i);
+            position.x += velocity.x * delta;
+            position.y += velocity.y * delta;
         }
     }
 };
@@ -71,9 +71,9 @@ struct PhysicsSystem : public ecs::System {
 Entities can be iterated using a lambda, but it is generally discouraged since only ecs::System can benefit from parallelization.
 ```cpp
 // Iterate through every entity that has a Position and Velocity component.
-encosys.ForEach([](ecs::Entity entity, Position& position, Velocity& velocity) {
+encosys.ForEach([&encosys, delta](ecs::EntityStorage& entity, Position& position, Velocity& velocity) {
     // Since acceleration is not required, we must check its existence.
-    if (const Acceleration* acceleration = entity.ReadComponent<Acceleration>()) {
+    if (const Acceleration* acceleration = entity.GetComponent<Acceleration>(encosys)) {
         velocity.x += acceleration->x * delta;
         velocity.y += acceleration->y * delta;
     }
