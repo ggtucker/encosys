@@ -12,9 +12,6 @@
 
 namespace ecs {
 
-// Forward declarations
-class Entity;
-
 class EntityStorage {
 public:
     explicit EntityStorage        (EntityId id) : m_id{id} {}
@@ -76,7 +73,7 @@ private:
     void IndexSetActive (uint32_t& index, bool active);
 
     template <typename TCallback, typename... Args, std::size_t... Seq>
-    void UnpackAndCallback (const EntityStorage& entity, TCallback&& callback, TypeList<Args...>, Sequence<Seq...>);
+    void UnpackAndCallback (EntityStorage& entity, TCallback&& callback, TypeList<Args...>, Sequence<Seq...>);
 
     // Member variables
     ComponentRegistry m_componentRegistry;
@@ -212,7 +209,7 @@ template <typename TCallback>
 void Encosys::ForEach (TCallback&& callback) {
     using FTraits = FunctionTraits<decltype(callback)>;
     static_assert(FTraits::ArgCount > 0, "First callback param must be ecs::Entity.");
-    static_assert(std::is_same<FTraits::Arg<0>, Entity>::value, "First callback param must be ecs::Entity.");
+    static_assert(std::is_same<std::decay_t<typename FTraits::Arg<0>>, EntityStorage>::value, "First callback param must be ecs::EntityStorage.");
     using FComponentArgs = typename FTraits::Args::RemoveFirst;
 
     ComponentBitset targetMask{};
@@ -223,7 +220,7 @@ void Encosys::ForEach (TCallback&& callback) {
     });
 
     for (uint32_t i = 0; i < m_entityActiveCount; ++i) {
-        const EntityStorage& entity = m_entities[i];
+        EntityStorage& entity = m_entities[i];
         if (entity.HasComponentBitset(targetMask)) {
             UnpackAndCallback(
                 entity,
@@ -236,10 +233,10 @@ void Encosys::ForEach (TCallback&& callback) {
 }
 
 template <typename TCallback, typename... Args, std::size_t... Seq>
-void Encosys::UnpackAndCallback (const EntityStorage& entity, TCallback&& callback, TypeList<Args...>, Sequence<Seq...>) {
+void Encosys::UnpackAndCallback (EntityStorage& entity, TCallback&& callback, TypeList<Args...>, Sequence<Seq...>) {
     auto params = std::make_tuple(
-        ecs::Entity(*this, entity),
-        std::ref(m_componentRegistry.GetStorage<Args>().GetObject(entity.GetComponentIndex(m_componentRegistry.GetTypeId<Args>())))...
+        entity,
+        std::ref(*entity.GetComponent<std::decay_t<Args>>(*this))...
     );
     callback(std::get<Seq>(params)...);
 }
