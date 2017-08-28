@@ -28,6 +28,9 @@ public:
     void     SetComponentIndex    (ComponentTypeId typeId, uint32_t index) { m_bitset.set(typeId); m_components[typeId] = index; }
     void     RemoveComponentIndex (ComponentTypeId typeId) { m_bitset.set(typeId, false); m_components[typeId] = c_invalidIndex; }
 
+    template <typename TComponent> TComponent*       GetComponent (const Encosys& encosys);
+    template <typename TComponent> const TComponent* GetComponent (const Encosys& encosys) const;
+
 private:
     EntityId m_id;
     ComponentBitset m_bitset;
@@ -41,6 +44,7 @@ public:
 
     // Entity members
     EntityId                                                      Create               (bool active = true);
+    EntityId                                                      Copy                 (EntityId e, bool active = true);
     void                                                          Destroy              (EntityId e);
     bool                                                          IsValid              (EntityId e) const;
     bool                                                          IsActive             (EntityId e) const;
@@ -53,12 +57,10 @@ public:
     template <typename TComponent> void                           RemoveComponent      (EntityId e);
     template <typename TComponent> TComponent*                    GetComponent         (EntityId e);
     template <typename TComponent> const TComponent*              GetComponent         (EntityId e) const;
-    template <typename TComponent> ComponentTypeId                GetComponentTypeId   () const;
+    template <typename TComponent> ComponentTypeId                GetComponentType     () const;
 
     // System members
     template <typename TSystem, typename... TArgs>   void         RegisterSystem       (TArgs&&... args);
-    template <typename TComponent> void                           SetRequiredComponent (SystemType& type, ComponentUsage usage);
-    template <typename TComponent> void                           SetOptionalComponent (SystemType& type, ComponentUsage usage);
     void                                                          Initialize           ();
     void                                                          Update               (TimeDelta delta);
 
@@ -66,7 +68,8 @@ public:
     template <typename TCallback> void                            ForEach              (TCallback&& callback);
 
 private:
-    friend class Entity;
+    friend class EntityStorage;
+    friend class SystemContext;
     // Helper members
     void IndexSwapEntities (uint32_t lhsIndex, uint32_t rhsIndex);
     bool IndexIsActive (uint32_t index) const;
@@ -84,52 +87,61 @@ private:
     uint32_t m_entityActiveCount{};
 };
 
-class Entity {
+class SystemContext {
 public:
-    Entity (Encosys& encosys, const EntityStorage& entityStorage) :
+    SystemContext (Encosys& encosys, const SystemType& systemType) :
         m_encosys{encosys},
-        m_entityStorage{entityStorage},
-        m_systemType{nullptr} {
-    }
-
-    Entity (Encosys& encosys, const EntityStorage& entityStorage, const SystemType& systemType) :
-        m_encosys{encosys},
-        m_entityStorage{entityStorage},
         m_systemType{&systemType} {
-    }
-
-    EntityId GetId () const {
-        return m_entityStorage.GetId();
-    }
-
-    template <typename TComponent>
-    TComponent* WriteComponent () const {
-        assert(!m_systemType || m_systemType->IsWriteAllowed(m_encosys.GetComponentTypeId<TComponent>()));
-        return const_cast<TComponent*>(static_cast<const Entity*>(this)->ReadComponent<TComponent>());
-    }
-
-    template <typename TComponent>
-    const TComponent* ReadComponent () const {
-        assert(!m_systemType || m_systemType->IsReadAllowed(m_encosys.GetComponentTypeId<TComponent>()));
-
-        // Retrieve the registered type of the component
-        const ComponentTypeId typeId = m_encosys.m_componentRegistry.GetTypeId<TComponent>();
-
-        // Retrieve the storage for this component type
-        auto& storage = m_encosys.m_componentRegistry.GetStorage<TComponent>();
-
-        // Find the component index for this entity and return the component
-        if (!m_entityStorage.HasComponent(typeId)) {
-            return nullptr;
+        m_entities.reserve(encosys.m_entityActiveCount);
+        for (uint32_t e = 0; e < encosys.m_entityActiveCount; ++e) {
+            EntityStorage& entity = encosys.m_entities[e];
+            if (entity.HasComponentBitset(systemType.GetRequiredBitset())) {
+                m_entities.push_back(&entity);
+            }
         }
-        return &storage.GetObject(m_entityStorage.GetComponentIndex(typeId));
+    }
+
+    uint32_t EntityCount () const { return static_cast<uint32_t>(m_entities.size()); }
+
+    template <typename TComponent>
+    TComponent* WriteComponent (uint32_t index) {
+        assert(index < m_entities.size());
+        assert(m_systemType->IsWriteAllowed(m_encosys.GetComponentType<TComponent>()));
+        return m_entities[index]->GetComponent<TComponent>(m_encosys);
+    }
+
+    template <typename TComponent>
+    const TComponent* ReadComponent (uint32_t index) const {
+        assert(index < m_entities.size());
+        assert(m_systemType->IsReadAllowed(m_encosys.GetComponentType<TComponent>()));
+        return m_entities[index]->GetComponent<TComponent>(m_encosys);
     }
 
 private:
     Encosys& m_encosys;
-    const EntityStorage& m_entityStorage;
-    const SystemType* m_systemType;
+    const SystemType* m_systemType{};
+    std::vector<EntityStorage*> m_entities{};
 };
+
+template <typename TComponent>
+TComponent* EntityStorage::GetComponent (const Encosys& encosys) {
+    return const_cast<TComponent*>(static_cast<const EntityStorage*>(this)->GetComponent<TComponent>(encosys));
+}
+
+template <typename TComponent>
+const TComponent* EntityStorage::GetComponent (const Encosys& encosys) const {
+    // Retrieve the registered type of the component
+    const ComponentTypeId typeId = encosys.GetComponentType<TComponent>();
+
+    // Return nullptr if this entity does not have this component type
+    if (!HasComponent(typeId)) {
+        return nullptr;
+    }
+
+    // Retrieve the storage for this component type
+    const auto& storage = encosys.m_componentRegistry.GetStorage<TComponent>();
+    return &storage.GetObject(GetComponentIndex(typeId));
+}
 
 template <typename TComponent>
 ComponentTypeId Encosys::RegisterComponent () {
@@ -181,42 +193,19 @@ TComponent* Encosys::GetComponent (EntityId e) {
 
 template <typename TComponent>
 const TComponent* Encosys::GetComponent (EntityId e) const {
-    // Verify this entity exists
     auto entityIter = m_idToEntity.find(e);
     assert(entityIter != m_idToEntity.end());
-
-    // Retrieve the registered type of the component
-    const ComponentTypeId typeId = m_componentRegistry.GetTypeId<TComponent>();
-
-    // Retrieve the storage for this component type
-    auto& storage = m_componentRegistry.GetStorage<TComponent>();
-
-    // Find the component index for this entity and return the component
-    const EntityStorage& entity = m_entities[entityIter->second];
-    if (!entity.HasComponent(typeId)) {
-        return nullptr;
-    }
-    return &storage.GetObject(entity.GetComponentIndex(typeId));
+    return m_entities[entityIter->second].GetComponent<TComponent>(*this);
 }
 
 template <typename TComponent>
-ComponentTypeId Encosys::GetComponentTypeId () const {
+ComponentTypeId Encosys::GetComponentType () const {
     return m_componentRegistry.GetTypeId<TComponent>();
 }
 
 template <typename TSystem, typename... TArgs>
 void Encosys::RegisterSystem (TArgs&&... args) {
     m_systemRegistry.Register<TSystem>(std::forward<TArgs>(args)...);
-}
-
-template <typename TComponent>
-void Encosys::SetRequiredComponent (SystemType& type, ComponentUsage usage) {
-    type.UseComponent(m_componentRegistry.GetTypeId<TComponent>(), ecs::ComponentRequirement::Required, usage);
-}
-
-template <typename TComponent>
-void Encosys::SetOptionalComponent (SystemType& type, ComponentUsage usage) {
-    type.UseComponent(m_componentRegistry.GetTypeId<TComponent>(), ecs::ComponentRequirement::Optional, usage);
 }
 
 template <typename TCallback>

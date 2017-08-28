@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{0BAFF1A1-6DD8-4A10-AAFB-A891C51FCF17}</ProjectGuid>
+    <ProjectGuid>{7BE36514-8FD0-48A5-B23A-7FABFD46B4EB}</ProjectGuid>
     <RootNamespace>simple_encosys</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
     <ProjectName>encosys</ProjectName>
@@ -121,6 +121,7 @@
   <ItemGroup>
     <ClInclude Include="BlockMemoryPool.h" />
     <ClInclude Include="ComponentRegistry.h" />
+    <ClInclude Include="ComponentType.h" />
     <ClInclude Include="EncosysDefines.h" />
     <ClInclude Include="EntityId.h" />
     <ClInclude Include="Encosys.h" />

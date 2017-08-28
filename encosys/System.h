@@ -11,7 +11,8 @@ public:
     virtual ~System () = default;
 
     virtual void Initialize (Encosys& encosys, SystemType& type) = 0;
-    virtual void Update (Encosys& encosys, const std::vector<Entity>& entities, TimeDelta delta) = 0;
+    virtual void Update (SystemContext& context, TimeDelta delta) = 0;
+    // virtual void UpdateParallel (Entity* entity, TimeDelta delta) = 0;
 };
 
 }

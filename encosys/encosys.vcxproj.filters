@@ -44,6 +44,9 @@
     <ClInclude Include="Encosys.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="ComponentType.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BlockMemoryPool.cpp">

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BlockObjectPool.h"
+#include "ComponentType.h"
 #include "EncosysDefines.h"
 #include <array>
 #include <cassert>
@@ -8,22 +9,6 @@
 #include <typeindex>
 
 namespace ecs {
-
-class ComponentType {
-public:
-    ComponentType () {}
-    ComponentType (ComponentTypeId id, uint32_t bytes) :
-        m_id{id},
-        m_bytes{bytes} {
-    }
-
-    ComponentTypeId Id () const { return m_id; }
-    uint32_t Bytes () const { return m_bytes; }
-
-private:
-    ComponentTypeId m_id{};
-    uint32_t m_bytes{};
-};
 
 class ComponentRegistry {
 public:
@@ -52,6 +37,11 @@ public:
         auto it = m_typeToId.find(typeid(std::decay_t<TComponent>));
         assert(it != m_typeToId.cend());
         return it->second;
+    }
+
+    template <typename TComponent>
+    const ComponentType& GetType () const {
+        return GetType(GetTypeId<TComponent>());
     }
 
     const ComponentType& GetType (ComponentTypeId id) const {

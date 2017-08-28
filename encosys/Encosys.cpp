@@ -13,19 +13,10 @@ void Encosys::Initialize () {
     }
 }
 
-
 void Encosys::Update (TimeDelta delta) {
-    std::vector<Entity> systemEntities;
-    systemEntities.reserve(EntityCount());
     for (uint32_t i = 0; i < m_systemRegistry.Count(); ++i) {
-        systemEntities.clear();
-        const SystemType& systemType = m_systemRegistry[i];
-        for (const EntityStorage& e : m_entities) {
-            if (e.HasComponentBitset(systemType.GetRequiredComponents())) {
-                systemEntities.push_back(Entity(*this, e, systemType));
-            }
-        }
-        m_systemRegistry.GetSystem(i)->Update(*this, systemEntities, delta);
+        SystemContext systemContext(*this, m_systemRegistry[i]);
+        m_systemRegistry.GetSystem(i)->Update(systemContext, delta);
     }
 }
 
@@ -50,6 +41,46 @@ EntityId Encosys::Create (bool active) {
     else {
         m_idToEntity[id] = EntityCount();
         m_entities.push_back(EntityStorage(id));
+    }
+
+    return id;
+}
+
+EntityId Encosys::Copy (EntityId e, bool active) {
+    // Cache off the information about the entity to copy
+    auto entityIter = m_idToEntity.find(e);
+    assert(entityIter != m_idToEntity.end());
+    const EntityStorage& entityToCopy = m_entities[entityIter->second];
+
+    EntityId id(m_entityIdCounter);
+    ++m_entityIdCounter;
+
+    EntityStorage entity(id);
+    for (uint32_t i = 0; i < m_componentRegistry.Count(); ++i) {
+        const ComponentTypeId typeId = m_componentRegistry[i].Id();
+        if (entityToCopy.HasComponent(typeId)) {
+            auto& storage = m_componentRegistry.GetStorage(typeId);
+            entity.SetComponentIndex(typeId, storage.CreateFromCopy(entityToCopy.GetComponentIndex(typeId)));
+        }
+    }
+
+    if (active) {
+        if (m_entityActiveCount == EntityCount()) {
+            m_idToEntity[id] = EntityCount();
+            m_entities.push_back(entity);
+        }
+        else {
+            const EntityStorage& firstInactiveEntity = m_entities[m_entityActiveCount];
+            m_idToEntity[firstInactiveEntity.GetId()] = EntityCount();
+            m_entities.push_back(firstInactiveEntity);
+            m_idToEntity[id] = m_entityActiveCount;
+            m_entities[m_entityActiveCount] = entity;
+        }
+        ++m_entityActiveCount;
+    }
+    else {
+        m_idToEntity[id] = EntityCount();
+        m_entities.push_back(entity);
     }
 
     return id;
