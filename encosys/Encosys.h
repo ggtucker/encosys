@@ -193,7 +193,7 @@ void Encosys::ForEach (TCallback&& callback) {
                 entity,
                 callback,
                 FComponentArgs{},
-                typename GenerateSequence<FTraits::ArgCount>::Type{}
+                typename tmp::GenerateSequence<FTraits::ArgCount>::Type{}
             );
         }
     }
