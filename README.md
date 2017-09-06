@@ -46,9 +46,9 @@ A system runs logic on the entities that have a specific subset of components. S
 struct PhysicsSystem : public ecs::System {
     virtual void Initialize (ecs::Encosys& encosys, ecs::SystemType& type) override {
         // Specify the dependencies for this system.
-        type.RequireComponent<Position>(encosys.GetComponentType<Position>(), ecs::ComponentUsage::Write);
-        type.RequireComponent<Velocity>(encosys.GetComponentType<Velocity>(), ecs::ComponentUsage::Write);
-        type.OptionalizeComponent<Acceleration>(type, ecs::ComponentUsage::Read);
+        type.RequireComponent(encosys.GetComponentType<Position>(), ecs::ComponentUsage::Write);
+        type.RequireComponent(encosys.GetComponentType<Velocity>(), ecs::ComponentUsage::Write);
+        type.OptionalizeComponent(encosys.GetComponentType<Acceleration>(), ecs::ComponentUsage::Read);
     }
     
     virtual void Update (ecs::SystemContext& context, ecs::TimeDelta delta) override {
