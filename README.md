@@ -41,17 +41,20 @@ encosys.RemoveComponent<Position>(entityId);
 ```
 
 ## systems
-A system runs logic on the entities that have a specific subset of components. Systems must inherit from the abstract ecs::System class and provide implementations for the Initialize and Update functions.
+A system runs logic on the entities that have a specific subset of components. Systems must inherit from either ecs::SequentialSystem or ecs::ParallelSystem and implement the Initialize and Update functions.
+
+Since systems register their component dependencies using the variadic template interface on their base class, they have the added benefit of compile-time verification of proper component usage. In the example below, the code would fail at compile time if a user tried to write to the Acceleration component (which was only registered for Read access).
 ```cpp
-struct PhysicsSystem : public ecs::System {
-    virtual void Initialize (ecs::Encosys& encosys, ecs::SystemType& type) override {
-        // Specify the dependencies for this system.
-        type.RequireComponent(encosys.GetComponentType<Position>(), ecs::ComponentUsage::Write);
-        type.RequireComponent(encosys.GetComponentType<Velocity>(), ecs::ComponentUsage::Write);
-        type.OptionalizeComponent(encosys.GetComponentType<Acceleration>(), ecs::ComponentUsage::Read);
+struct PhysicsSystem : public ecs::ParallelSystem<
+    ecs::ComponentDependency<Position, ecs::Existence::Required, ecs::Access::Write>,
+    ecs::ComponentDependency<Velocity, ecs::Existence::Required, ecs::Access::Write>,
+    ecs::ComponentDependency<Acceleration, ecs::Existence::Optional, ecs::Access::Read>
+> {
+    virtual void Initialize (ecs::Encosys& encosys) override {
+        // Do initialization things.
     }
     
-    virtual void Update (ecs::SystemContext& context, ecs::TimeDelta delta) override {
+    virtual void Update (SystemContext& context, ecs::TimeDelta delta) override {
         // Update this system given a time delta.
         for (uint32_t i = 0; i < context.EntityCount(); ++i) {
             Velocity& velocity = *context.WriteComponent<Velocity>(i);
@@ -67,11 +70,14 @@ struct PhysicsSystem : public ecs::System {
     }
 };
 ```
-#### iterating entities outside of a system
-Entities can be iterated using a lambda, but it is generally discouraged since only ecs::System can benefit from parallelization.
+
+## iterating entities outside systems
+Entities can be iterated using a lambda or for loop, but it is generally discouraged since only ecs::System can benefit from parallelization.
 ```cpp
-// Iterate through every entity that has a Position and Velocity component.
-encosys.ForEach([&encosys, delta](ecs::EntityStorage& entity, Position& position, Velocity& velocity) {
+// Iterate through every entity that has a Position and Velocity component
+
+// Using a lambda
+encosys.ForEach([&encosys, delta](ecs::Entity& entity, Position& position, Velocity& velocity) {
     // Since acceleration is not required, we must check its existence.
     if (const Acceleration* acceleration = entity.GetComponent<Acceleration>(encosys)) {
         velocity.x += acceleration->x * delta;
@@ -80,6 +86,27 @@ encosys.ForEach([&encosys, delta](ecs::EntityStorage& entity, Position& position
     position.x += velocity.x * delta;
     position.y += velocity.y * delta;
 });
+
+// Using a for loop
+const ecs::ComponentBitset requiredBitset = (
+    encosys.GetComponentType<Position>().Id()
+    | encosys.GetComponentType<Velocity>().Id()
+);
+for (uint32_t e = 0; e < encosys.ActiveEntityCount(); ++e) {
+    ecs::Entity& entity = encosys[e];
+    if (!entity.HasComponentBitset(requiredBitset)) {
+        continue;
+    }
+    const Position& position = *entity.GetComponent<Position>(encosys);
+    const Velocity& velocity = *entity.GetComponent<Velocity>(encosys);
+    // Since acceleration is not required, we must check its existence.
+    if (const Acceleration* acceleration = entity.GetComponent<Acceleration>(encosys)) {
+        velocity.x += acceleration->x * delta;
+        velocity.y += acceleration->y * delta;
+    }
+    position.x += velocity.x * delta;
+    position.y += velocity.y * delta;
+}
 ```
 
 ## setting up encosys
@@ -95,14 +122,14 @@ encosys.RegisterComponent<Acceleration>();
 // 3. register systems
 encosys.RegisterSystem<PhysicsSystem>();
 
-// 4. initialize system dependencies
-encosys.Initialize();
-
-// 5. create entities
+// 4. create entities
 ecs::EntityId entityId = encosys.Create();
 
-// 6. add components to entities
+// 5. add components to entities
 encosys.AddComponent<Position>(entityId, 5.f, 10.f);
+
+// 6. initialize systems
+encosys.Initialize();
 
 // 7. run game loop
 while (running) {
