@@ -6,29 +6,7 @@
 #define TYPE_OF(t) typename decltype(t)::Type
 
 namespace ecs {
-
-// Repeat
-
-template <typename, typename>
-struct _Repeat_Append;
-
-template <typename T, typename... Ts>
-struct _Repeat_Append<T, std::tuple<Ts...>> {
-    using Type = std::tuple<Ts..., T>;
-};
-
-template <std::size_t N, typename T>
-struct _Repeat {
-    using Type = typename _Repeat_Append<T, typename _Repeat<N - 1, T>::Type>::Type;
-};
-
-template <typename T>
-struct _Repeat<0, T> {
-    using Type = std::tuple<>;
-};
-
-template <std::size_t N, typename T>
-using Repeat = typename _Repeat<N, T>::Type;
+namespace tmp {
 
 // Type List
 
@@ -162,4 +140,5 @@ struct TypeList {
     };
 };
 
-}
+} // namespace tmp
+} // namespace ecs

@@ -128,9 +128,12 @@
     <ClInclude Include="BlockObjectPool.h" />
     <ClInclude Include="FunctionTraits.h" />
     <ClInclude Include="System.h" />
+    <ClInclude Include="SystemContext.h" />
     <ClInclude Include="SystemRegistry.h" />
+    <ClInclude Include="ComponentDependency.h" />
     <ClInclude Include="SystemType.h" />
     <ClInclude Include="TypeList.h" />
+    <ClInclude Include="TypeUtil.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BlockMemoryPool.cpp" />

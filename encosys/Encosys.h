@@ -12,9 +12,9 @@
 
 namespace ecs {
 
-class EntityStorage {
+class Entity {
 public:
-    explicit EntityStorage        (EntityId id) : m_id{id} {}
+    explicit Entity        (EntityId id) : m_id{id} {}
 
     EntityId GetId                () const { return m_id; }
 
@@ -47,6 +47,7 @@ public:
     bool                                                          IsActive             (EntityId e) const;
     void                                                          SetActive            (EntityId e, bool active);
     uint32_t                                                      EntityCount          () const;
+    uint32_t                                                      ActiveEntityCount    () const;
 
     // Component members
     template <typename TComponent> ComponentTypeId                RegisterComponent    ();
@@ -54,81 +55,47 @@ public:
     template <typename TComponent> void                           RemoveComponent      (EntityId e);
     template <typename TComponent> TComponent*                    GetComponent         (EntityId e);
     template <typename TComponent> const TComponent*              GetComponent         (EntityId e) const;
-    template <typename TComponent> ComponentTypeId                GetComponentType     () const;
+    template <typename TComponent> const ComponentType&           GetComponentType     () const;
 
     // System members
     template <typename TSystem, typename... TArgs>   void         RegisterSystem       (TArgs&&... args);
     void                                                          Initialize           ();
     void                                                          Update               (TimeDelta delta);
 
-    // Other members
+    // Iteration members
     template <typename TCallback> void                            ForEach              (TCallback&& callback);
+    Entity&                                                       operator[]           (uint32_t index) { return m_entities[index]; }
+    const Entity&                                                 operator[]           (uint32_t index) const { return m_entities[index]; }
 
 private:
-    friend class EntityStorage;
-    friend class SystemContext;
+    friend class Entity;
+
     // Helper members
     void IndexSwapEntities (uint32_t lhsIndex, uint32_t rhsIndex);
     bool IndexIsActive (uint32_t index) const;
     void IndexSetActive (uint32_t& index, bool active);
 
     template <typename TCallback, typename... Args, std::size_t... Seq>
-    void UnpackAndCallback (EntityStorage& entity, TCallback&& callback, TypeList<Args...>, Sequence<Seq...>);
+    void UnpackAndCallback (Entity& entity, TCallback&& callback, tmp::TypeList<Args...>, tmp::Sequence<Seq...>);
 
     // Member variables
     ComponentRegistry m_componentRegistry;
     SystemRegistry m_systemRegistry;
     std::unordered_map<EntityId, uint32_t> m_idToEntity;
-    std::vector<EntityStorage> m_entities;
+    std::vector<Entity> m_entities;
     uint32_t m_entityIdCounter{};
     uint32_t m_entityActiveCount{};
 };
 
-class SystemContext {
-public:
-    SystemContext (Encosys& encosys, const SystemType& systemType) :
-        m_encosys{encosys},
-        m_systemType{&systemType} {
-        m_entities.reserve(encosys.m_entityActiveCount);
-        for (uint32_t e = 0; e < encosys.m_entityActiveCount; ++e) {
-            EntityStorage& entity = encosys.m_entities[e];
-            if (entity.HasComponentBitset(systemType.GetRequiredBitset())) {
-                m_entities.push_back(&entity);
-            }
-        }
-    }
-
-    uint32_t EntityCount () const { return static_cast<uint32_t>(m_entities.size()); }
-
-    template <typename TComponent>
-    TComponent* WriteComponent (uint32_t index) {
-        assert(index < m_entities.size());
-        assert(m_systemType->IsWriteAllowed(m_encosys.GetComponentType<TComponent>()));
-        return m_entities[index]->GetComponent<TComponent>(m_encosys);
-    }
-
-    template <typename TComponent>
-    const TComponent* ReadComponent (uint32_t index) const {
-        assert(index < m_entities.size());
-        assert(m_systemType->IsReadAllowed(m_encosys.GetComponentType<TComponent>()));
-        return m_entities[index]->GetComponent<TComponent>(m_encosys);
-    }
-
-private:
-    Encosys& m_encosys;
-    const SystemType* m_systemType{};
-    std::vector<EntityStorage*> m_entities{};
-};
-
 template <typename TComponent>
-TComponent* EntityStorage::GetComponent (const Encosys& encosys) {
-    return const_cast<TComponent*>(static_cast<const EntityStorage*>(this)->GetComponent<TComponent>(encosys));
+TComponent* Entity::GetComponent (const Encosys& encosys) {
+    return const_cast<TComponent*>(static_cast<const Entity*>(this)->GetComponent<TComponent>(encosys));
 }
 
 template <typename TComponent>
-const TComponent* EntityStorage::GetComponent (const Encosys& encosys) const {
+const TComponent* Entity::GetComponent (const Encosys& encosys) const {
     // Retrieve the registered type of the component
-    const ComponentTypeId typeId = encosys.GetComponentType<TComponent>();
+    const ComponentTypeId typeId = encosys.GetComponentType<TComponent>().Id();
 
     // Return nullptr if this entity does not have this component type
     if (!HasComponent(typeId)) {
@@ -176,7 +143,7 @@ void Encosys::RemoveComponent (EntityId e) {
     auto& storage = m_componentRegistry.GetStorage<TComponent>();
 
     // Find the component index for this entity and destroy the component
-    EntityStorage& entity = m_entities[entityIter->second];
+    Entity& entity = m_entities[entityIter->second];
     if (entity.HasComponent(typeId)) {
         storage.Destroy(entity.GetComponentIndex(typeId));
         entity.RemoveComponentIndex(typeId);
@@ -196,8 +163,8 @@ const TComponent* Encosys::GetComponent (EntityId e) const {
 }
 
 template <typename TComponent>
-ComponentTypeId Encosys::GetComponentType () const {
-    return m_componentRegistry.GetTypeId<TComponent>();
+const ComponentType& Encosys::GetComponentType () const {
+    return m_componentRegistry.GetType<TComponent>();
 }
 
 template <typename TSystem, typename... TArgs>
@@ -207,9 +174,9 @@ void Encosys::RegisterSystem (TArgs&&... args) {
 
 template <typename TCallback>
 void Encosys::ForEach (TCallback&& callback) {
-    using FTraits = FunctionTraits<decltype(callback)>;
+    using FTraits = tmp::FunctionTraits<decltype(callback)>;
     static_assert(FTraits::ArgCount > 0, "First callback param must be ecs::Entity.");
-    static_assert(std::is_same<std::decay_t<typename FTraits::Arg<0>>, EntityStorage>::value, "First callback param must be ecs::EntityStorage.");
+    static_assert(std::is_same<std::decay_t<typename FTraits::Arg<0>>, Entity>::value, "First callback param must be ecs::Entity.");
     using FComponentArgs = typename FTraits::Args::RemoveFirst;
 
     ComponentBitset targetMask{};
@@ -220,7 +187,7 @@ void Encosys::ForEach (TCallback&& callback) {
     });
 
     for (uint32_t i = 0; i < m_entityActiveCount; ++i) {
-        EntityStorage& entity = m_entities[i];
+        Entity& entity = m_entities[i];
         if (entity.HasComponentBitset(targetMask)) {
             UnpackAndCallback(
                 entity,
@@ -233,7 +200,7 @@ void Encosys::ForEach (TCallback&& callback) {
 }
 
 template <typename TCallback, typename... Args, std::size_t... Seq>
-void Encosys::UnpackAndCallback (EntityStorage& entity, TCallback&& callback, TypeList<Args...>, Sequence<Seq...>) {
+void Encosys::UnpackAndCallback (Entity& entity, TCallback&& callback, tmp::TypeList<Args...>, tmp::Sequence<Seq...>) {
     auto params = std::make_tuple(
         entity,
         std::ref(*entity.GetComponent<std::decay_t<Args>>(*this))...

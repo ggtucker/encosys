@@ -38,13 +38,22 @@
     <ClInclude Include="SystemRegistry.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="SystemType.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="Encosys.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="ComponentType.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SystemContext.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ComponentDependency.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SystemType.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeUtil.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
