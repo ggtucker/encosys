@@ -9,7 +9,9 @@ namespace ecs {
 
 void Encosys::Initialize () {
     for (uint32_t i = 0; i < m_systemRegistry.Count(); ++i) {
-        m_systemRegistry.GetSystem(i)->Initialize(*this);
+        m_systemRegistry[i].SetRequiredComponents(
+            m_systemRegistry.GetSystem(i)->GetRequiredComponents(m_componentRegistry)
+        );
     }
 }
 

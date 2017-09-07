@@ -16,11 +16,8 @@ public:
 
     SystemTypeId Id () const { return m_id; }
 
-    void RequireComponent (ComponentTypeId type, ComponentUsage usage) {
-        m_requiredBitset.set(type, true);
-    }
-
     const ComponentBitset& GetRequiredBitset () const { return m_requiredBitset; }
+    void SetRequiredComponents (ComponentBitset bitset) { m_requiredBitset = bitset; }
 
 private:
     SystemTypeId m_id{};
