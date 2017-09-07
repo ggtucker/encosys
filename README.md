@@ -54,19 +54,17 @@ struct PhysicsSystem : public ecs::ParallelSystem<
         // Do initialization things.
     }
     
-    virtual void Update (SystemContext& context, ecs::TimeDelta delta) override {
-        // Update this system given a time delta.
-        for (uint32_t i = 0; i < context.EntityCount(); ++i) {
-            Velocity& velocity = *context.WriteComponent<Velocity>(i);
-            // Since acceleration was flagged as an optional component, we must check its existence.
-            if (const CAcceleration* acceleration = context.ReadComponent<CAcceleration>(i)) {
-                velocity.x += acceleration->x * delta;
-                velocity.y += acceleration->y * delta;
-            }
-            Position& position = *context.WriteComponent<Position>(i);
-            position.x += velocity.x * delta;
-            position.y += velocity.y * delta;
+    virtual void Update (SystemEntity& entity, ecs::TimeDelta delta) override {
+        // Update this entity given a time delta.
+        Velocity& velocity = *entity.WriteComponent<Velocity>();
+        // Since acceleration was flagged as an optional component, we must check its existence.
+        if (const CAcceleration* acceleration = entity.ReadComponent<CAcceleration>()) {
+            velocity.x += acceleration->x * delta;
+            velocity.y += acceleration->y * delta;
         }
+        Position& position = *entity.WriteComponent<Position>();
+        position.x += velocity.x * delta;
+        position.y += velocity.y * delta;
     }
 };
 ```
