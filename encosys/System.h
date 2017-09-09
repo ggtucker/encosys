@@ -67,7 +67,7 @@ private:
         for (uint32_t e = 0; e < encosys.ActiveEntityCount(); ++e) {
             Entity& entity = encosys[e];
             if (entity.HasComponentBitset(systemType.GetRequiredBitset())) {
-                Update(SystemEntity(encosys, systemType, entity), delta);
+                Update(SystemEntity(entity), delta);
             }
         }
     }

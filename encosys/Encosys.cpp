@@ -28,20 +28,20 @@ EntityId Encosys::Create (bool active) {
     if (active) {
         if (m_entityActiveCount == EntityCount()) {
             m_idToEntity[id] = EntityCount();
-            m_entities.push_back(Entity(id));
+            m_entities.push_back(EntityStorage(id));
         }
         else {
-            const Entity& firstInactiveEntity = m_entities[m_entityActiveCount];
+            const EntityStorage& firstInactiveEntity = m_entities[m_entityActiveCount];
             m_idToEntity[firstInactiveEntity.GetId()] = EntityCount();
             m_entities.push_back(firstInactiveEntity);
             m_idToEntity[id] = m_entityActiveCount;
-            m_entities[m_entityActiveCount] = Entity(id);
+            m_entities[m_entityActiveCount] = EntityStorage(id);
         }
         ++m_entityActiveCount;
     }
     else {
         m_idToEntity[id] = EntityCount();
-        m_entities.push_back(Entity(id));
+        m_entities.push_back(EntityStorage(id));
     }
 
     return id;
@@ -51,12 +51,12 @@ EntityId Encosys::Copy (EntityId e, bool active) {
     // Cache off the information about the entity to copy
     auto entityIter = m_idToEntity.find(e);
     assert(entityIter != m_idToEntity.end());
-    const Entity& entityToCopy = m_entities[entityIter->second];
+    const EntityStorage& entityToCopy = m_entities[entityIter->second];
 
     EntityId id(m_entityIdCounter);
     ++m_entityIdCounter;
 
-    Entity entity(id);
+    EntityStorage entity(id);
     for (uint32_t i = 0; i < m_componentRegistry.Count(); ++i) {
         const ComponentTypeId typeId = m_componentRegistry[i].Id();
         if (entityToCopy.HasComponent(typeId)) {
@@ -71,7 +71,7 @@ EntityId Encosys::Copy (EntityId e, bool active) {
             m_entities.push_back(entity);
         }
         else {
-            const Entity& firstInactiveEntity = m_entities[m_entityActiveCount];
+            const EntityStorage& firstInactiveEntity = m_entities[m_entityActiveCount];
             m_idToEntity[firstInactiveEntity.GetId()] = EntityCount();
             m_entities.push_back(firstInactiveEntity);
             m_idToEntity[id] = m_entityActiveCount;
@@ -94,7 +94,7 @@ void Encosys::Destroy (EntityId e) {
 
     // Cache off the information about this entity
     uint32_t entityIndex = entityIter->second;
-    Entity& entity = m_entities[entityIndex];
+    EntityStorage& entity = m_entities[entityIndex];
 
     // Destroy the components for this entity
     for (uint32_t i = 0; i < m_componentRegistry.Count(); ++i) {
