@@ -128,7 +128,8 @@
     <ClInclude Include="BlockObjectPool.h" />
     <ClInclude Include="FunctionTraits.h" />
     <ClInclude Include="System.h" />
-    <ClInclude Include="SystemContext.h" />
+    <ClInclude Include="SystemEntities.h" />
+    <ClInclude Include="SystemModQueue.h" />
     <ClInclude Include="SystemRegistry.h" />
     <ClInclude Include="ComponentDependency.h" />
     <ClInclude Include="SystemType.h" />
@@ -138,6 +139,7 @@
   <ItemGroup>
     <ClCompile Include="BlockMemoryPool.cpp" />
     <ClCompile Include="Encosys.cpp" />
+    <ClCompile Include="SystemModQueue.cpp" />
     <ClCompile Include="SystemRegistry.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

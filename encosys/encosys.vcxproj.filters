@@ -44,9 +44,6 @@
     <ClInclude Include="ComponentType.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="SystemContext.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="ComponentDependency.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -54,6 +51,12 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="TypeUtil.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SystemModQueue.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SystemEntities.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -65,6 +68,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Encosys.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SystemModQueue.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

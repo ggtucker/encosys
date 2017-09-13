@@ -32,6 +32,19 @@ const uint8_t* BlockMemoryPool::GetData (uint32_t index) const {
     return m_blocks[index / m_blockSize] + (index % m_blockSize) * m_elementSize;
 }
 
+uint32_t BlockMemoryPool::Create () {
+    uint32_t index;
+    if (!m_freeIndices.empty()) {
+        index = m_freeIndices.back();
+        m_freeIndices.pop_back();
+    }
+    else {
+        index = GetSize();
+        Resize(GetSize() + 1);
+    }
+    return index;
+}
+
 uint32_t BlockMemoryPool::CreateFromCopy (uint32_t index) {
     assert(index < m_size);
     uint32_t newIndex = m_size;
@@ -41,7 +54,7 @@ uint32_t BlockMemoryPool::CreateFromCopy (uint32_t index) {
 
 void BlockMemoryPool::Destroy (uint32_t index) {
     assert(index < m_size);
-    memset(GetData(index), 0, m_elementSize);
+    m_freeIndices.push_back(index);
 }
 
 }

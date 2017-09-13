@@ -33,11 +33,11 @@ private:
 };
 
 template <typename TComponentDependencyList>
-class SystemContext {
+class SystemEntities {
 public:
     using SystemEntity = SystemEntity<TComponentDependencyList>;
 
-    explicit SystemContext (Encosys& encosys, const SystemType& systemType) {
+    explicit SystemEntities (Encosys& encosys, const SystemType& systemType) {
         m_entities.reserve(encosys.ActiveEntityCount());
         for (uint32_t e = 0; e < encosys.ActiveEntityCount(); ++e) {
             Entity entity = encosys[e];
@@ -47,8 +47,8 @@ public:
         }
     }
 
-    uint32_t EntityCount () const { return static_cast<uint32_t>(m_entities.size()); }
-    SystemEntity GetEntity (uint32_t index) { return SystemEntity(m_entities[index]); }
+    uint32_t Count () const { return static_cast<uint32_t>(m_entities.size()); }
+    SystemEntity operator[] (uint32_t index) const { return m_entities[index]; }
 
 private:
     std::vector<SystemEntity> m_entities{};

@@ -65,7 +65,7 @@ public:
     uint32_t                                                      EntityCount          () const;
     uint32_t                                                      ActiveEntityCount    () const;
 
-    // Component members
+    // Template component members
     template <typename TComponent> ComponentTypeId                RegisterComponent    ();
     template <typename TComponent, typename... TArgs> TComponent& AddComponent         (EntityId e, TArgs&&... args);
     template <typename TComponent> void                           RemoveComponent      (EntityId e);
@@ -73,8 +73,15 @@ public:
     template <typename TComponent> const TComponent*              GetComponent         (EntityId e) const;
     template <typename TComponent> const ComponentType&           GetComponentType     () const;
 
+    // Non-template component members
+    uint8_t*                                                      AddComponent         (EntityId e, ComponentTypeId typeId);
+    void                                                          RemoveComponent      (EntityId e, ComponentTypeId typeId);
+    uint8_t*                                                      GetComponent         (EntityId e, ComponentTypeId typeId);
+    const uint8_t*                                                GetComponent         (EntityId e, ComponentTypeId typeId) const;
+    const ComponentType&                                          GetComponentType     (ComponentTypeId typeId) const;
+
     // System members
-    template <typename TSystem, typename... TArgs>   void         RegisterSystem       (TArgs&&... args);
+    template <typename TSystem, typename... TArgs> void           RegisterSystem       (TArgs&&... args);
     void                                                          Initialize           ();
     void                                                          Update               (TimeDelta delta);
 
@@ -84,6 +91,9 @@ public:
 
 private:
     friend class Entity;
+
+    template <typename TComponentDependencyList>
+    friend class SystemContext;
 
     // Helper members
     void IndexSwapEntities (uint32_t lhsIndex, uint32_t rhsIndex);
@@ -140,7 +150,7 @@ TComponent& Encosys::AddComponent (EntityId e, TArgs&&... args) {
     auto& storage = m_componentRegistry.GetStorage<TComponent>();
 
     // Create the component and set the component index for this entity
-    uint32_t componentIndex = storage.Create(std::forward<TArgs>(args)...);
+    uint32_t componentIndex = storage.Construct(std::forward<TArgs>(args)...);
     m_entities[entityIter->second].SetComponentIndex(typeId, componentIndex);
     return storage.GetObject(componentIndex);
 }
@@ -158,7 +168,7 @@ void Encosys::RemoveComponent (EntityId e) {
     auto& storage = m_componentRegistry.GetStorage<TComponent>();
 
     // Find the component index for this entity and destroy the component
-    Entity& entity = m_entities[entityIter->second];
+    EntityStorage& entity = m_entities[entityIter->second];
     if (entity.HasComponent(typeId)) {
         storage.Destroy(entity.GetComponentIndex(typeId));
         entity.RemoveComponentIndex(typeId);
@@ -174,7 +184,19 @@ template <typename TComponent>
 const TComponent* Encosys::GetComponent (EntityId e) const {
     auto entityIter = m_idToEntity.find(e);
     assert(entityIter != m_idToEntity.end());
-    return m_entities[entityIter->second].GetComponent<TComponent>(*this);
+
+    // Retrieve the registered type of the component
+    const ComponentTypeId typeId = m_encosys.GetComponentType<TComponent>().Id();
+
+    // Return nullptr if this entity does not have this component type
+    const EntityStorage& entity = m_entities[entityIter->second];
+    if (!entity.HasComponent(typeId)) {
+        return nullptr;
+    }
+
+    // Retrieve the storage for this component type
+    const auto& storage = m_componentRegistry.GetStorage<TComponent>();
+    return &storage.GetObject(entity.GetComponentIndex(typeId));
 }
 
 template <typename TComponent>

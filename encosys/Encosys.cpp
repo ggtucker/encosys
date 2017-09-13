@@ -16,8 +16,10 @@ void Encosys::Initialize () {
 }
 
 void Encosys::Update (TimeDelta delta) {
+    SystemModQueue modQueue(*this);
     for (uint32_t i = 0; i < m_systemRegistry.Count(); ++i) {
-        m_systemRegistry.GetSystem(i)->Update(*this, m_systemRegistry[i], delta);
+        m_systemRegistry.GetSystem(i)->Update(*this, modQueue, m_systemRegistry[i], delta);
+        modQueue.ApplyQueuedMods();
     }
 }
 
@@ -140,6 +142,59 @@ uint32_t Encosys::EntityCount () const {
 
 uint32_t Encosys::ActiveEntityCount () const {
     return m_entityActiveCount;
+}
+
+uint8_t* Encosys::AddComponent (EntityId e, ComponentTypeId typeId) {
+    // Verify this entity exists
+    auto entityIter = m_idToEntity.find(e);
+    assert(entityIter != m_idToEntity.end());
+
+    // Retrieve the storage for this component type
+    auto& storage = m_componentRegistry.GetStorage(typeId);
+
+    // Create the component and set the component index for this entity
+    uint32_t componentIndex = storage.Create();
+    m_entities[entityIter->second].SetComponentIndex(typeId, componentIndex);
+    return storage.GetData(componentIndex);
+}
+
+void Encosys::RemoveComponent (EntityId e, ComponentTypeId typeId) {
+    // Verify this entity exists
+    auto entityIter = m_idToEntity.find(e);
+    assert(entityIter != m_idToEntity.end());
+
+    // Retrieve the storage for this component type
+    auto& storage = m_componentRegistry.GetStorage(typeId);
+
+    // Find the component index for this entity and destroy the component
+    EntityStorage& entity = m_entities[entityIter->second];
+    if (entity.HasComponent(typeId)) {
+        storage.Destroy(entity.GetComponentIndex(typeId));
+        entity.RemoveComponentIndex(typeId);
+    }
+}
+
+uint8_t* Encosys::GetComponent (EntityId e, ComponentTypeId typeId) {
+    return const_cast<uint8_t*>(static_cast<const Encosys*>(this)->GetComponent(e, typeId));
+}
+
+const uint8_t* Encosys::GetComponent (EntityId e, ComponentTypeId typeId) const {
+    auto entityIter = m_idToEntity.find(e);
+    assert(entityIter != m_idToEntity.end());
+
+    // Return nullptr if this entity does not have this component type
+    const EntityStorage& entity = m_entities[entityIter->second];
+    if (!entity.HasComponent(typeId)) {
+        return nullptr;
+    }
+
+    // Retrieve the storage for this component type
+    const auto& storage = m_componentRegistry.GetStorage(typeId);
+    return storage.GetData(entity.GetComponentIndex(typeId));
+}
+
+const ComponentType& Encosys::GetComponentType (ComponentTypeId typeId) const {
+    return m_componentRegistry.GetType(typeId);
 }
 
 void Encosys::IndexSwapEntities (uint32_t lhsIndex, uint32_t rhsIndex) {

@@ -20,6 +20,7 @@ public:
     void Resize (uint32_t size);
     void Reserve (uint32_t capacity);
 
+    uint32_t Create ();
     virtual uint32_t CreateFromCopy (uint32_t index);
     virtual void Destroy (uint32_t index);
 
@@ -32,6 +33,7 @@ private:
     uint32_t m_capacity{0};
     uint32_t m_size{0};
     std::vector<uint8_t*> m_blocks{};
+    std::vector<uint32_t> m_freeIndices{};
 };
 
 }
