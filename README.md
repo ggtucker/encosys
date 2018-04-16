@@ -123,7 +123,7 @@ for (uint32_t e = 0; e < encosys.ActiveEntityCount(); ++e) {
 }
 ```
 
-## setting up encosys
+## putting it all together
 ```cpp
 // 1. create the framework wrapper
 ecs::Encosys encosys;
@@ -153,3 +153,9 @@ while (running) {
     encosys.Update(0.0625f);
 }
 ```
+
+## building encosys
+1. run `premake5 --file=premake.lua <project-type>` * *see [Using Premake](https://github.com/premake/premake-core/wiki/Using-Premake) for more details*
+2. open the project generated in build/
+3. compile the project in your desired configuration
+4. find the .lib in bin/
