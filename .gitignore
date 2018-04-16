@@ -1,4 +1,3 @@
 .vs/
 bin/
 build/
-premake_config.lua
