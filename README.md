@@ -19,20 +19,36 @@ struct Position {
 ## entities
 An entity is just an ID. From this ID we can add, remove, and query for components.
 ```cpp
+// Create the entity management class
 ecs::Encosys encosys;
-ecs::EntityId entityId = encosys.Create();
+
+// The ecs::Entity class wraps the entity id and provides a convenient interface for its components
+ecs::Entity entity = encosys.Create();
+
+// To safely store a reference to the entity, ecs::EntityId should be used instead
+ecs::EntityId entityId = entity.GetId();
 ```
 #### adding a component
 The component does not need to have a default constructor, but if there isn't one then the constructor's parameters must be passed in when adding the component to an entity.
 ```cpp
-// Using default constructor
-encosys.AddComponent<Position>(entityId);
+// Adding a component using ecs::Entity
+entity.AddComponent<Position>(); // default constructor
+entity.AddComponent<Position>(5.f, 10.f); // non-default constructor
 
-// Using non-default constructor
-encosys.AddComponent<Position>(entityId, 5.f, 10.f);
+// Adding a component using ecs::EntityId
+encosys.AddComponent<Position>(entityId); // default constructor
+encosys.AddComponent<Position>(entityId, 5.f, 10.f); // non-default constructor
 ```
 #### getting and removing a component
 ```cpp
+// Using ecs::Entity
+Position* position = entity.GetComponent<Position>();
+if (position) {
+    // Do stuff with position if the entity had this component.
+}
+entity.RemoveComponent<Position>();
+
+// Using ecs::EntityId
 Position* position = encosys.GetComponent<Position>(entityId);
 if (position) {
     // Do stuff with position if the entity had this component.
@@ -41,23 +57,23 @@ encosys.RemoveComponent<Position>(entityId);
 ```
 
 ## systems
-A system runs logic on the entities that have a specific subset of components. Systems must inherit from either ecs::SequentialSystem or ecs::ParallelSystem and implement the Initialize and Update functions.
+A system runs logic on the entities that have a specific subset of components. Systems must inherit from ecs::System and implement the Initialize and Update functions.
 
-Since systems register their component dependencies using the variadic template interface on their base class, they have the added benefit of compile-time verification of proper component usage. In the example below, the code would fail at compile time if a user tried to write to the Acceleration component (which was only registered for Read access).
+Systems are expected to register their read/write component dependencies in the Initialize function which can be used to infer which systems are safe to run concurrently. In the example below, the code would assert at runtime if a user tried to write to the Acceleration component (call `entity.WriteComponent<CAcceleration>()`) which was only registered for Read access.
 ```cpp
-struct PhysicsSystem : public ecs::ParallelSystem<
-    ecs::ComponentDependency<Position, ecs::Existence::Required, ecs::Access::Write>,
-    ecs::ComponentDependency<Velocity, ecs::Existence::Required, ecs::Access::Write>,
-    ecs::ComponentDependency<Acceleration, ecs::Existence::Optional, ecs::Access::Read>
-> {
-    virtual void Initialize (ecs::Encosys& encosys) override {
-        // Do initialization things.
+struct PhysicsSystem : public ecs::System {
+    virtual void Initialize (ecs::SystemType& type) override {
+        // Register component dependencies
+        RequiredComponent<Position>(type, ecs::Access::Write);
+        RequiredComponent<Velocity>(type, ecs::Access::Write);
+        OptionalComponent<Acceleration>(type, ecs::Access::Read);
+        // Do other initialization things.
     }
     
     virtual void Update (SystemEntity& entity, ecs::TimeDelta delta) override {
         // Update this entity given a time delta.
         Velocity& velocity = *entity.WriteComponent<Velocity>();
-        // Since acceleration was flagged as an optional component, we must check its existence.
+        // Since acceleration was flagged as an optional component, we must check for its existence.
         if (const CAcceleration* acceleration = entity.ReadComponent<CAcceleration>()) {
             velocity.x += acceleration->x * delta;
             velocity.y += acceleration->y * delta;
@@ -70,7 +86,7 @@ struct PhysicsSystem : public ecs::ParallelSystem<
 ```
 
 ## iterating entities outside systems
-Entities can be iterated using a lambda or for loop, but it is generally discouraged since only ecs::System can benefit from parallelization.
+Entities can be iterated using a lambda or for loop, but it is generally discouraged since only ecs::System benefits from concurrency.
 ```cpp
 // Iterate through every entity that has a Position and Velocity component
 
@@ -117,19 +133,22 @@ encosys.RegisterComponent<Position>();
 encosys.RegisterComponent<Velocity>();
 encosys.RegisterComponent<Acceleration>();
 
-// 3. register systems
+// 3. register singleton types
+encosys.RegisterSingleton<InputManager>();
+
+// 4. register systems
 encosys.RegisterSystem<PhysicsSystem>();
 
-// 4. create entities
-ecs::EntityId entityId = encosys.Create();
+// 5. create entities
+ecs::Entity entity = encosys.Create();
 
-// 5. add components to entities
-encosys.AddComponent<Position>(entityId, 5.f, 10.f);
+// 6. add components to entities
+entity.AddComponent<Position>(5.f, 10.f);
 
-// 6. initialize systems
+// 7. initialize systems
 encosys.Initialize();
 
-// 7. run game loop
+// 8. run game loop
 while (running) {
     encosys.Update(0.0625f);
 }
