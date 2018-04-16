@@ -1,7 +1,6 @@
 #include "Encosys.h"
 
 #include <algorithm>
-#include <cassert>
 #include "ComponentRegistry.h"
 #include "System.h"
 
@@ -9,50 +8,48 @@ namespace ecs {
 
 void Encosys::Initialize () {
     for (uint32_t i = 0; i < m_systemRegistry.Count(); ++i) {
-        m_systemRegistry[i].SetRequiredComponents(
-            m_systemRegistry.GetSystem(i)->GetRequiredComponents(m_componentRegistry)
-        );
+        m_systemRegistry.GetSystem(i)->Initialize(m_systemRegistry.GetSystemType(i));
     }
 }
 
 void Encosys::Update (TimeDelta delta) {
-    SystemModQueue modQueue(*this);
     for (uint32_t i = 0; i < m_systemRegistry.Count(); ++i) {
-        m_systemRegistry.GetSystem(i)->Update(*this, modQueue, m_systemRegistry[i], delta);
-        modQueue.ApplyQueuedMods();
+        m_systemRegistry.GetSystem(i)->Update(delta);
     }
 }
 
-EntityId Encosys::Create (bool active) {
+Entity Encosys::Create (bool active) {
     EntityId id(m_entityIdCounter);
     ++m_entityIdCounter;
 
+    uint32_t& index = m_idToEntity[id];
+
     if (active) {
         if (m_entityActiveCount == EntityCount()) {
-            m_idToEntity[id] = EntityCount();
+            index = EntityCount();
             m_entities.push_back(EntityStorage(id));
         }
         else {
             const EntityStorage& firstInactiveEntity = m_entities[m_entityActiveCount];
             m_idToEntity[firstInactiveEntity.GetId()] = EntityCount();
             m_entities.push_back(firstInactiveEntity);
-            m_idToEntity[id] = m_entityActiveCount;
+            index = m_entityActiveCount;
             m_entities[m_entityActiveCount] = EntityStorage(id);
         }
         ++m_entityActiveCount;
     }
     else {
-        m_idToEntity[id] = EntityCount();
+        index = EntityCount();
         m_entities.push_back(EntityStorage(id));
     }
 
-    return id;
+    return Entity(this, &m_entities[index]);
 }
 
 EntityId Encosys::Copy (EntityId e, bool active) {
     // Cache off the information about the entity to copy
     auto entityIter = m_idToEntity.find(e);
-    assert(entityIter != m_idToEntity.end());
+    ENCOSYS_ASSERT_(entityIter != m_idToEntity.end());
     const EntityStorage& entityToCopy = m_entities[entityIter->second];
 
     EntityId id(m_entityIdCounter);
@@ -89,10 +86,18 @@ EntityId Encosys::Copy (EntityId e, bool active) {
     return id;
 }
 
+Entity Encosys::Get (EntityId e) {
+    auto entityIter = m_idToEntity.find(e);
+    if (entityIter != m_idToEntity.end()) {
+        return Entity(this, &m_entities[entityIter->second]);
+    }
+    return Entity(this, nullptr);
+}
+
 void Encosys::Destroy (EntityId e) {
     // Verify this entity exists
     auto entityIter = m_idToEntity.find(e);
-    assert(entityIter != m_idToEntity.end());
+    ENCOSYS_ASSERT_(entityIter != m_idToEntity.end());
 
     // Cache off the information about this entity
     uint32_t entityIndex = entityIter->second;
@@ -122,7 +127,7 @@ bool Encosys::IsValid (EntityId e) const {
 bool Encosys::IsActive (EntityId e) const {
     // Verify this entity exists
     auto entityIter = m_idToEntity.find(e);
-    assert(entityIter != m_idToEntity.end());
+    ENCOSYS_ASSERT_(entityIter != m_idToEntity.end());
 
     return IndexIsActive(entityIter->second);
 }
@@ -130,7 +135,7 @@ bool Encosys::IsActive (EntityId e) const {
 void Encosys::SetActive (EntityId e, bool active) {
     // Verify this entity exists
     auto entityIter = m_idToEntity.find(e);
-    assert(entityIter != m_idToEntity.end());
+    ENCOSYS_ASSERT_(entityIter != m_idToEntity.end());
 
     uint32_t entityIndex = entityIter->second;
     IndexSetActive(entityIndex, active);
@@ -144,57 +149,8 @@ uint32_t Encosys::ActiveEntityCount () const {
     return m_entityActiveCount;
 }
 
-uint8_t* Encosys::AddComponent (EntityId e, ComponentTypeId typeId) {
-    // Verify this entity exists
-    auto entityIter = m_idToEntity.find(e);
-    assert(entityIter != m_idToEntity.end());
-
-    // Retrieve the storage for this component type
-    auto& storage = m_componentRegistry.GetStorage(typeId);
-
-    // Create the component and set the component index for this entity
-    uint32_t componentIndex = storage.Create();
-    m_entities[entityIter->second].SetComponentIndex(typeId, componentIndex);
-    return storage.GetData(componentIndex);
-}
-
-void Encosys::RemoveComponent (EntityId e, ComponentTypeId typeId) {
-    // Verify this entity exists
-    auto entityIter = m_idToEntity.find(e);
-    assert(entityIter != m_idToEntity.end());
-
-    // Retrieve the storage for this component type
-    auto& storage = m_componentRegistry.GetStorage(typeId);
-
-    // Find the component index for this entity and destroy the component
-    EntityStorage& entity = m_entities[entityIter->second];
-    if (entity.HasComponent(typeId)) {
-        storage.Destroy(entity.GetComponentIndex(typeId));
-        entity.RemoveComponentIndex(typeId);
-    }
-}
-
-uint8_t* Encosys::GetComponent (EntityId e, ComponentTypeId typeId) {
-    return const_cast<uint8_t*>(static_cast<const Encosys*>(this)->GetComponent(e, typeId));
-}
-
-const uint8_t* Encosys::GetComponent (EntityId e, ComponentTypeId typeId) const {
-    auto entityIter = m_idToEntity.find(e);
-    assert(entityIter != m_idToEntity.end());
-
-    // Return nullptr if this entity does not have this component type
-    const EntityStorage& entity = m_entities[entityIter->second];
-    if (!entity.HasComponent(typeId)) {
-        return nullptr;
-    }
-
-    // Retrieve the storage for this component type
-    const auto& storage = m_componentRegistry.GetStorage(typeId);
-    return storage.GetData(entity.GetComponentIndex(typeId));
-}
-
-const ComponentType& Encosys::GetComponentType (ComponentTypeId typeId) const {
-    return m_componentRegistry.GetType(typeId);
+const SystemType& Encosys::GetSystemType (SystemTypeId systemId) const {
+    return m_systemRegistry.GetSystemType(systemId);
 }
 
 void Encosys::IndexSwapEntities (uint32_t lhsIndex, uint32_t rhsIndex) {

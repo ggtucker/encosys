@@ -1,10 +1,10 @@
 #pragma once
 
-#include "EncosysDefines.h"
+#include "EncosysConfig.h"
 
 namespace ecs {
 
-enum class ComponentUsage {
+enum class Access {
     Read,
     Write
 };
@@ -16,12 +16,36 @@ public:
 
     SystemTypeId Id () const { return m_id; }
 
-    const ComponentBitset& GetRequiredBitset () const { return m_requiredBitset; }
-    void SetRequiredComponents (ComponentBitset bitset) { m_requiredBitset = bitset; }
+    void RequiredComponent (ComponentTypeId type, Access access) {
+        m_requiredComponents.set(type, true);
+        OptionalComponent(type, access);
+    }
+
+    void OptionalComponent (ComponentTypeId type, Access access) {
+        m_readComponents.set(type);
+        m_writeComponents.set(type, access == Access::Write);
+    }
+
+    void RequiredSingleton (SingletonTypeId type, Access access) {
+        m_readSingletons.set(type);
+        m_writeSingletons.set(type, access == Access::Write);
+    }
+
+    const ComponentBitset& GetRequiredBitset () const { return m_requiredComponents; }
+
+    bool IsComponentReadAllowed (ComponentTypeId typeId) const { return m_readComponents.test(typeId); }
+    bool IsComponentWriteAllowed (ComponentTypeId typeId) const { return m_writeComponents.test(typeId); }
+
+    bool IsSingletonReadAllowed (SingletonTypeId typeId) const { return m_readSingletons.test(typeId); }
+    bool IsSingletonWriteAllowed (SingletonTypeId typeId) const { return m_writeSingletons.test(typeId); }
 
 private:
     SystemTypeId m_id{};
-    ComponentBitset m_requiredBitset{};
+    ComponentBitset m_requiredComponents{};
+    ComponentBitset m_readComponents{};
+    ComponentBitset m_writeComponents{};
+    SingletonBitset m_readSingletons{};
+    SingletonBitset m_writeSingletons{};
 };
 
 }

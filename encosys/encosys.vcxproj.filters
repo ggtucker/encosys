@@ -11,9 +11,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="EncosysDefines.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="EntityId.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -53,10 +50,19 @@
     <ClInclude Include="TypeUtil.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="SystemModQueue.h">
+    <ClInclude Include="SystemEntities.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="SystemEntities.h">
+    <ClInclude Include="EncosysConfig.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SingletonRegistry.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SystemIter.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VirtualObject.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -68,9 +74,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Encosys.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="SystemModQueue.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

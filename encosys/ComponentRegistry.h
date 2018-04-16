@@ -2,7 +2,7 @@
 
 #include "BlockObjectPool.h"
 #include "ComponentType.h"
-#include "EncosysDefines.h"
+#include "EncosysConfig.h"
 #include <array>
 #include <cassert>
 #include <map>

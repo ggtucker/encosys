@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EncosysDefines.h"
+#include "EncosysConfig.h"
 
 namespace ecs {
 

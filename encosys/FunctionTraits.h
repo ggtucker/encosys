@@ -4,7 +4,6 @@
 #include "TypeList.h"
 
 namespace ecs {
-namespace tmp {
 
 template <std::size_t...>
 struct Sequence {};
@@ -61,5 +60,4 @@ struct FunctionTraits<F&> : public FunctionTraits<F> {};
 template <typename F>
 struct FunctionTraits<F&&> : public FunctionTraits<F> {};
 
-} // namespace tmp
-} // namespace ecs
+}
